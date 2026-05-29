@@ -1,0 +1,262 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Car Rider Board — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6f1e7; --ink:#16233b; --ink-soft:#516079;
+    --cone:#e8721c; --cone-deep:#c25908; --line:#d8cfbd;
+    --card:#fffdf8; --deck:#eef3ff; --deck-line:#cdd9f2; --deck-ink:#28406e;
+    --buf:#f1ede3; --buf-line:#ddd4c2; --buf-ink:#6a7283;
+    --shadow:0 2px 0 #e3dac8, 0 10px 26px -14px rgba(22,35,59,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Libre Franklin',system-ui,sans-serif;
+    background:radial-gradient(900px 500px at 85% -10%, #fbf6ec 0%, transparent 60%),var(--paper);
+    color:var(--ink);min-height:100vh;padding:16px clamp(12px,2.4vw,32px) 96px}
+  .wrap{max-width:1320px;margin:0 auto}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:16px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .cone-mark{width:38px;height:38px;flex:0 0 auto;position:relative}
+  .cone-mark::before{content:"";position:absolute;inset:auto 5px 3px 5px;height:5px;border-radius:3px;background:var(--cone-deep)}
+  .cone-mark::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
+    width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:27px solid var(--cone)}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(19px,2.4vw,28px);line-height:1;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:12.5px;font-weight:500;margin-top:3px}
+  .clock{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:clamp(17px,1.9vw,24px);text-align:right}
+  .clock small{display:block;font-family:'Libre Franklin';font-size:11.5px;font-weight:500;color:var(--ink-soft)}
+
+  .board{display:grid;grid-template-columns:1fr 1fr;gap:clamp(12px,2vw,26px)}
+  @media(max-width:840px){.board{grid-template-columns:1fr}}
+  .row-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .row-name{font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;letter-spacing:-.01em}
+  .depth{font-family:'Bricolage Grotesque';font-weight:700;font-size:12px;background:var(--ink);color:var(--paper);padding:3px 10px;border-radius:999px;letter-spacing:.03em}
+
+  .zone-label{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;
+    display:flex;align-items:center;gap:7px;margin:4px 0 7px}
+  .zone-label .pip{width:8px;height:8px;border-radius:50%;background:var(--cone)}
+
+  .cones{display:flex;flex-direction:column;gap:5px}
+  .cone{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:11px;padding:6px 11px;min-height:46px;transition:transform .12s ease}
+  .cone.empty{background:transparent;border-style:dashed;border-color:#cfc6b3}
+  .cone.pop{animation:pop .42s cubic-bezier(.2,.9,.3,1.3)}
+  @keyframes pop{0%{transform:scale(.94);opacity:.4}60%{transform:scale(1.02)}100%{transform:scale(1)}}
+  .cone.filled{box-shadow:var(--shadow)}
+  .num{flex:0 0 auto;width:37px;height:37px;border-radius:10px;display:grid;place-items:center;
+    font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;background:#efe7d6;color:var(--ink-soft)}
+  .cone.filled .num{background:var(--cone);color:#fff;box-shadow:0 2px 0 var(--cone-deep)}
+  .names{flex:1;min-width:0}
+  .nm{font-weight:700;font-size:clamp(15px,1.5vw,19px);line-height:1.1}
+  .gr{font-size:11px;color:var(--ink-soft);font-weight:600;margin-left:6px}
+  .placeholder{color:#b6ab94;font-style:italic;font-size:13px}
+
+  .ondeck{margin-top:12px;background:var(--deck);border:1px solid var(--deck-line);border-radius:13px;padding:10px 12px}
+  .ondeck .zone-label{color:var(--deck-ink);margin-top:0}
+  .ondeck .zone-label .pip{background:var(--deck-ink)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;min-height:34px}
+  .chip{background:#fff;border:1px solid var(--deck-line);border-radius:8px;padding:5px 9px;font-weight:700;
+    font-size:14px;color:var(--deck-ink);display:flex;align-items:center;gap:7px;animation:pop .35s ease;cursor:default}
+  .chip .gr{color:#7d8db0;margin-left:0}
+  .chip .sib{font-size:10px;background:var(--deck-ink);color:#fff;border-radius:5px;padding:1px 5px}
+  .chip .x{cursor:pointer;color:#a9b6d4;font-weight:800;font-size:14px;line-height:1;margin-left:1px}
+  .chip .x:hover{color:#d23b3b}
+  .deck-empty{color:#8aa0cc;font-style:italic;font-size:13px;align-self:center}
+  .advance{margin-top:9px;width:100%;font-family:'Bricolage Grotesque';font-weight:700;font-size:14px;
+    cursor:pointer;border:none;border-radius:9px;padding:9px;background:var(--deck-ink);color:#fff;letter-spacing:.01em;transition:.12s}
+  .advance:hover{filter:brightness(1.08)} .advance:active{transform:translateY(1px)}
+  .advance:disabled{background:#c3cee3;cursor:not-allowed}
+
+  .buffer{margin-top:8px;background:var(--buf);border:1px solid var(--buf-line);border-radius:11px;padding:9px 11px}
+  .buffer .zone-label{color:var(--buf-ink);margin:0 0 6px} .buffer .zone-label .pip{background:var(--buf-ink)}
+  .bchips{display:flex;flex-wrap:wrap;gap:5px}
+  .bchip{background:#fbf7ee;border:1px solid var(--buf-line);border-radius:7px;padding:3px 7px;font-weight:600;
+    font-size:12px;color:var(--buf-ink);display:flex;align-items:center;gap:5px}
+  .bchip .x{cursor:pointer;color:#bdb39e;font-weight:800;font-size:12px;line-height:1}
+  .bchip .x:hover{color:#d23b3b}
+  .bmore{font-size:12px;font-weight:700;color:var(--buf-ink);align-self:center;padding:0 4px}
+
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fffdf8;border-top:1px solid var(--line);
+    box-shadow:0 -8px 24px -18px rgba(22,35,59,.4);padding:10px clamp(12px,2.4vw,32px);z-index:5}
+  .bar-inner{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+  .bar .lab{font-size:11px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+  .target{display:flex;gap:4px;background:#efe7d6;border-radius:9px;padding:3px}
+  .target button{font-family:'Bricolage Grotesque';font-weight:700;border:none;background:transparent;color:var(--ink-soft);
+    padding:6px 13px;border-radius:7px;cursor:pointer;font-size:13px}
+  .target button.on{background:var(--cone);color:#fff;box-shadow:0 2px 0 var(--cone-deep)}
+  .pool{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:160px;padding-bottom:2px}
+  .car{flex:0 0 auto;cursor:pointer;font-family:inherit;background:#fbf6ec;border:1px solid var(--line);
+    border-radius:9px;padding:6px 11px;display:flex;align-items:center;gap:8px;white-space:nowrap;transition:.12s}
+  .car:hover{border-color:var(--cone);transform:translateY(-1px)}
+  .car .tag{font-family:'Bricolage Grotesque';font-weight:700;font-size:11px;color:#fff;background:var(--ink-soft);padding:2px 6px;border-radius:5px}
+  .car .who{font-weight:600;font-size:13px}
+  .pool-empty{color:var(--ink-soft);font-size:13px;font-style:italic;padding:6px}
+  .manual{display:flex;gap:6px}
+  .manual input{font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:9px;padding:8px 11px;background:#fbf6ec;color:var(--ink);width:150px}
+  .manual input:focus{outline:2px solid var(--cone);outline-offset:1px}
+  .manual button{font-family:'Bricolage Grotesque';font-weight:700;border:none;border-radius:9px;padding:8px 12px;background:#efe7d6;color:var(--ink);cursor:pointer;font-size:13px}
+  .manual button:hover{background:#e6dcc6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="cone-mark"></div>
+      <div><h1>Car Rider Board</h1><div class="sub">Oglethorpe County Elementary &middot; afternoon dismissal</div></div></div>
+    <div class="clock"><span id="clock">—</span><small>scan down the lane &middot; the board windows it into waves</small></div>
+  </header>
+
+  <div class="board">
+    <section>
+      <div class="row-head"><div class="row-name">Row A</div><div class="depth" id="depthA">empty</div></div>
+      <div class="zone-label"><span class="pip"></span>At the cones — Wave <span id="waveA">1</span>, loading now</div>
+      <div class="cones" id="conesA"></div>
+      <div class="ondeck">
+        <div class="zone-label"><span class="pip"></span>On deck — Wave <span id="nextA">2</span>, call these</div>
+        <div class="chips" id="deckA"></div>
+        <button class="advance" id="advA" onclick="advance('A')">Wave loaded &amp; gone — Advance Row A &#9654;</button>
+      </div>
+      <div class="buffer" id="bufWrapA" style="display:none">
+        <div class="zone-label"><span class="pip"></span><span id="bufLabA">In queue</span></div>
+        <div class="bchips" id="bufA"></div>
+      </div>
+    </section>
+    <section>
+      <div class="row-head"><div class="row-name">Row B</div><div class="depth" id="depthB">empty</div></div>
+      <div class="zone-label"><span class="pip"></span>At the cones — Wave <span id="waveB">1</span>, loading now</div>
+      <div class="cones" id="conesB"></div>
+      <div class="ondeck">
+        <div class="zone-label"><span class="pip"></span>On deck — Wave <span id="nextB">2</span>, call these</div>
+        <div class="chips" id="deckB"></div>
+        <button class="advance" id="advB" onclick="advance('B')">Wave loaded &amp; gone — Advance Row B &#9654;</button>
+      </div>
+      <div class="buffer" id="bufWrapB" style="display:none">
+        <div class="zone-label"><span class="pip"></span><span id="bufLabB">In queue</span></div>
+        <div class="bchips" id="bufB"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="bar"><div class="bar-inner">
+  <span class="lab">Scan into</span>
+  <div class="target">
+    <button id="tA" class="on" onclick="setTarget('A')">Row A</button>
+    <button id="tB" onclick="setTarget('B')">Row B</button>
+  </div>
+  <span class="lab">Tap a car</span>
+  <div class="pool" id="pool"></div>
+  <div class="manual">
+    <input id="manualName" type="text" placeholder="No tag? type a name" onkeydown="if(event.key==='Enter')manualAdd()">
+    <button onclick="manualAdd()">Add</button>
+  </div>
+</div></div>
+
+<script>
+  const SIZE=10, BUF_SHOWN=14;
+  // ---- build a demo roster (~30 cars, some with siblings) ----
+  const FIRST=['Emma','Jack','Mateo','Ava','Noah','Lily','Sophia','Eli','Harper','Liam','Caleb','Ruth','Maya','Owen','Zoe','Isaac','Nora','Gabe','Ivy','Theo','Mia','Luca','Cora','Silas','Wren','Jonah','Elena','Beau','Hazel','Reid','Daisy','Miles','Pearl','Asa','June','Ezra','Opal','Tate','Lena','Cyrus'];
+  const LAST=['Wilson','Reyes','Coleman','Pruitt','Grant','Maddox','Dunn','Foster','Singh','Brooks','Hammond','Tate','Beasley','Whitfield','Calhoun','Mercer','Boone','Vance','Ashby','Dolan','Frost','Hale','Knox','Pope','Sands','Ortega','Layne','Crews','Dade','Ruiz'];
+  const GRADES=['K','1','2','3','4','5'];
+  const roster=[]; let fi=0, li=0, tag=1041;
+  for(let c=0;c<30;c++){
+    const r=Math.random(); const kids = r<0.66?1 : r<0.9?2 : 3;
+    const last=LAST[li++ % LAST.length];
+    const students=[];
+    for(let k=0;k<kids;k++){students.push({n:FIRST[fi++ % FIRST.length]+' '+last, g:GRADES[Math.floor(Math.random()*GRADES.length)]});}
+    roster.push({tag:String(tag++), students});
+  }
+  let waiting = roster.map((r,i)=>i);
+  let target='A';
+  const rows={ A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
+  let lastPop={A:-1,B:-1};
+
+  function tick(){const t=new Date();document.getElementById('clock').textContent=t.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}
+  setInterval(tick,1000);tick();
+  function setTarget(r){target=r;document.getElementById('tA').className=r==='A'?'on':'';document.getElementById('tB').className=r==='B'?'on':'';}
+
+  function scanInto(row,famIndex){
+    waiting=waiting.filter(x=>x!==famIndex);
+    const fam=roster[famIndex];
+    const r=rows[row];
+    if(r.queue.length<SIZE) lastPop[row]=r.queue.length; // landed in a cone
+    r.queue.push({names:fam.students.map(s=>({n:s.n,g:s.g})),tag:fam.tag});
+    render();
+  }
+  function manualAdd(){
+    const el=document.getElementById('manualName');const v=el.value.trim();if(!v)return;
+    const r=rows[target];
+    if(r.queue.length<SIZE) lastPop[target]=r.queue.length;
+    r.queue.push({names:[{n:v,g:''}],tag:null,manual:true});
+    el.value='';render();
+  }
+  function removeAt(row,idx){ rows[row].queue.splice(idx,1); render(); }
+  function advance(row){ const r=rows[row]; r.queue=r.queue.slice(SIZE); r.wave++; lastPop[row]=-1; render(); }
+
+  function chipInner(p){
+    if(p.names.length===1) return esc(p.names[0].n)+(p.names[0].g?'<span class="gr">Gr '+p.names[0].g+'</span>':'');
+    return esc(p.names.map(s=>s.n).join(', '))+'<span class="sib">'+p.names.length+'</span>';
+  }
+
+  function render(){
+    ['A','B'].forEach(row=>{
+      const r=rows[row], q=r.queue;
+      const cones=q.slice(0,SIZE), deck=q.slice(SIZE,SIZE*2), buf=q.slice(SIZE*2);
+      document.getElementById('wave'+row).textContent=r.wave;
+      document.getElementById('next'+row).textContent=r.wave+1;
+      // depth pill
+      const waves=Math.ceil(q.length/SIZE);
+      document.getElementById('depth'+row).textContent = q.length===0 ? 'empty'
+        : q.length+' cars · '+waves+' wave'+(waves>1?'s':'')+' staged';
+      // cones
+      const wrap=document.getElementById('cones'+row);wrap.innerHTML='';
+      for(let i=0;i<SIZE;i++){
+        const c=cones[i]; const div=document.createElement('div');
+        const filled=!!c;
+        div.className='cone '+(filled?'filled':'empty')+(i===lastPop[row]?' pop':'');
+        let inner='<div class="num">'+(i+1)+'</div><div class="names">';
+        inner += filled ? c.names.map(s=>'<div class="nm">'+esc(s.n)+(s.g?'<span class="gr">Gr '+s.g+'</span>':'')+'</div>').join('')
+                        : '<div class="placeholder">empty</div>';
+        inner+='</div>'; div.innerHTML=inner; wrap.appendChild(div);
+      }
+      // on deck
+      const d=document.getElementById('deck'+row);d.innerHTML='';
+      if(deck.length===0){d.innerHTML='<div class="deck-empty">no cars staged yet</div>';}
+      else deck.forEach((p,j)=>{const i=SIZE+j;const chip=document.createElement('div');chip.className='chip';
+        chip.innerHTML=chipInner(p)+'<span class="x" title="car left the line" onclick="removeAt(\''+row+'\','+i+')">&times;</span>';d.appendChild(chip);});
+      document.getElementById('adv'+row).disabled = q.length===0;
+      // buffer
+      const bw=document.getElementById('bufWrap'+row);
+      if(buf.length===0){bw.style.display='none';}
+      else{
+        bw.style.display='block';
+        const moreWaves=Math.ceil(buf.length/SIZE);
+        document.getElementById('bufLab'+row).textContent='Further back — Wave '+(r.wave+2)+'+ ('+buf.length+' more car'+(buf.length>1?'s':'')+', '+moreWaves+' wave'+(moreWaves>1?'s':'')+')';
+        const bc=document.getElementById('buf'+row);bc.innerHTML='';
+        buf.slice(0,BUF_SHOWN).forEach((p,j)=>{const i=SIZE*2+j;const ch=document.createElement('div');ch.className='bchip';
+          ch.innerHTML=chipInner(p)+'<span class="x" onclick="removeAt(\''+row+'\','+i+')">&times;</span>';bc.appendChild(ch);});
+        if(buf.length>BUF_SHOWN){const m=document.createElement('div');m.className='bmore';m.textContent='+'+(buf.length-BUF_SHOWN)+' more';bc.appendChild(m);}
+      }
+    });
+    lastPop={A:-1,B:-1};
+    renderPool();
+  }
+  function renderPool(){
+    const p=document.getElementById('pool');p.innerHTML='';
+    if(waiting.length===0){p.innerHTML='<div class="pool-empty">All demo cars scanned — advance a row to recycle, or type names.</div>';return;}
+    waiting.forEach(i=>{const fam=roster[i];const who=fam.students.map(s=>s.n).join(', ');
+      const b=document.createElement('button');b.className='car';b.onclick=()=>scanInto(target,i);
+      b.innerHTML='<span class="tag">#'+fam.tag+'</span><span class="who">'+esc(who)+'</span>';p.appendChild(b);});
+  }
+  function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  render();
+</script>
+</body>
+</html>
