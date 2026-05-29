@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Car Rider Board — Display</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Libre+Franklin:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f6f1e7; --ink:#16233b; --ink-soft:#516079;
+    --cone:#e8721c; --cone-deep:#c25908; --line:#d8cfbd; --card:#fffdf8;
+    --deck:#eef3ff; --deck-line:#cdd9f2; --deck-ink:#28406e;
+    --shadow:0 2px 0 #e3dac8, 0 12px 30px -16px rgba(22,35,59,.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Libre Franklin',system-ui,sans-serif;
+    background:radial-gradient(1200px 700px at 85% -15%, #fbf6ec 0%, transparent 60%),var(--paper);
+    color:var(--ink);overflow:hidden}
+  .screen{height:100vh;display:flex;flex-direction:column;padding:1.4vh 1.4vw 1.2vh}
+
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:2vw;
+    border-bottom:0.4vh solid var(--ink);padding-bottom:1vh;margin-bottom:1.2vh;flex:0 0 auto}
+  .brand{display:flex;align-items:center;gap:1.2vw}
+  .cone-mark{width:5vh;height:5vh;flex:0 0 auto;position:relative}
+  .cone-mark::before{content:"";position:absolute;inset:auto 12% 8% 12%;height:0.7vh;border-radius:3px;background:var(--cone-deep)}
+  .cone-mark::after{content:"";position:absolute;left:50%;bottom:18%;transform:translateX(-50%);
+    width:0;height:0;border-left:1.7vh solid transparent;border-right:1.7vh solid transparent;border-bottom:3.6vh solid var(--cone)}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:4.2vh;line-height:1;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:1.9vh;font-weight:600;margin-top:.4vh}
+  .clock{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:4.6vh;text-align:right;line-height:1}
+  .preview{font-family:'Libre Franklin';font-size:1.5vh;font-weight:700;color:var(--ink-soft);letter-spacing:.08em;text-align:right;margin-top:.5vh}
+
+  .board{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1.4vw;min-height:0}
+  .col{display:flex;flex-direction:column;min-height:0}
+  .row-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8vh;flex:0 0 auto}
+  .row-name{font-family:'Bricolage Grotesque';font-weight:800;font-size:3.1vh;letter-spacing:-.01em}
+  .row-meta{font-family:'Bricolage Grotesque';font-weight:700;font-size:1.8vh;color:#fff;background:var(--ink);padding:.5vh 1.1vh;border-radius:999px;letter-spacing:.03em}
+
+  .zone{font-size:1.6vh;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;
+    display:flex;align-items:center;gap:.7vw;margin-bottom:.7vh}
+  .zone .pip{width:1.1vh;height:1.1vh;border-radius:50%;background:var(--cone)}
+
+  .cones{flex:1;display:flex;flex-direction:column;gap:.6vh;min-height:0}
+  .cone{flex:1;display:flex;align-items:center;gap:1.2vw;background:var(--card);border:1px solid var(--line);
+    border-radius:1.3vh;padding:0 1.2vh;min-height:0;overflow:hidden}
+  .cone.empty{background:transparent;border-style:dashed;border-color:#cfc6b3}
+  .cone.filled{box-shadow:var(--shadow)}
+  .num{flex:0 0 auto;width:5.4vh;height:5.4vh;border-radius:1vh;display:grid;place-items:center;
+    font-family:'Bricolage Grotesque';font-weight:800;font-size:2.9vh;background:#efe7d6;color:var(--ink-soft)}
+  .cone.filled .num{background:var(--cone);color:#fff;box-shadow:0 .4vh 0 var(--cone-deep)}
+  .names{flex:1;min-width:0;line-height:1.05;overflow:hidden}
+  .nm{font-weight:800;font-size:2.7vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .multi .nm{font-size:2.1vh;font-weight:700}
+  .placeholder{color:#c2b89f;font-style:italic;font-weight:600;font-size:2vh}
+
+  .ondeck{flex:0 0 auto;margin-top:1vh;background:var(--deck);border:1px solid var(--deck-line);
+    border-radius:1.4vh;padding:1vh 1.2vh}
+  .ondeck .zone{color:var(--deck-ink)} .ondeck .zone .pip{background:var(--deck-ink)}
+  .chips{display:flex;flex-wrap:wrap;gap:.7vh}
+  .chip{background:#fff;border:1px solid var(--deck-line);border-radius:1vh;padding:.7vh 1.1vh;
+    font-weight:800;font-size:2.2vh;color:var(--deck-ink)}
+  .chip.multi{font-size:1.8vh;font-weight:700}
+  .deck-empty{color:#8aa0cc;font-style:italic;font-weight:600;font-size:1.9vh}
+  .more{font-size:1.7vh;font-weight:700;color:var(--ink-soft);margin-top:.8vh}
+</style>
+</head>
+<body>
+<div class="screen">
+  <header class="top">
+    <div class="brand">
+      <div class="cone-mark"></div>
+      <div><h1>Car Rider Board</h1><div class="sub">Oglethorpe County Elementary &middot; afternoon dismissal</div></div>
+    </div>
+    <div><div class="clock" id="clock">—</div><div class="preview">PREVIEW &middot; SAMPLE DATA</div></div>
+  </header>
+
+  <div class="board">
+    <section class="col">
+      <div class="row-top"><div class="row-name">Row A</div><div class="row-meta" id="metaA"></div></div>
+      <div class="zone"><span class="pip"></span>At the cones — loading now</div>
+      <div class="cones" id="conesA"></div>
+      <div class="ondeck">
+        <div class="zone"><span class="pip"></span>On deck — come to the door</div>
+        <div class="chips" id="deckA"></div>
+        <div class="more" id="moreA"></div>
+      </div>
+    </section>
+    <section class="col">
+      <div class="row-top"><div class="row-name">Row B</div><div class="row-meta" id="metaB"></div></div>
+      <div class="zone"><span class="pip"></span>At the cones — loading now</div>
+      <div class="cones" id="conesB"></div>
+      <div class="ondeck">
+        <div class="zone"><span class="pip"></span>On deck — come to the door</div>
+        <div class="chips" id="deckB"></div>
+        <div class="more" id="moreB"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  const SIZE=10, DECK_SHOWN=8;
+
+  // ============================================================
+  //  DATA SOURCE  (preview mode: sample data that gently flows)
+  //  To go live, replace this block with a poll of the shared
+  //  backend (Airtable) and feed the same {A,B} queue shape to
+  //  render(). Everything below render() stays the same.
+  // ============================================================
+  const FIRST=['Emma','Jack','Mateo','Ava','Noah','Lily','Sophia','Eli','Harper','Liam','Caleb','Ruth','Maya','Owen','Zoe','Isaac','Nora','Gabe','Ivy','Theo','Mia','Luca','Cora','Silas','Wren','Jonah','Elena','Beau','Hazel','Reid','Daisy','Miles','Pearl','Asa','June','Ezra','Opal','Lena','Cyrus','Faye'];
+  const LAST=['Wilson','Reyes','Coleman','Pruitt','Grant','Maddox','Dunn','Foster','Singh','Brooks','Hammond','Tate','Beasley','Whitfield','Calhoun','Mercer','Boone','Vance','Ashby','Dolan','Frost','Hale','Knox','Pope','Sands','Ortega','Layne','Crews'];
+  let fi=0,li=0;
+  function nextCar(){
+    const kids = Math.random()<0.7?1:Math.random()<0.85?2:3;
+    const last=LAST[li++%LAST.length]; const names=[];
+    for(let k=0;k<kids;k++) names.push(FIRST[fi++%FIRST.length]+' '+last);
+    return {names};
+  }
+  const rows={A:{wave:1,queue:[]},B:{wave:1,queue:[]}};
+  // seed so the panel looks alive immediately
+  function seed(row,n,wave){rows[row].wave=wave;for(let i=0;i<n;i++)rows[row].queue.push(nextCar());}
+  seed('A',13,1); seed('B',16,2);
+
+  // gentle simulation: a scan every few seconds, a wave advance now and then
+  setInterval(()=>{ const r=Math.random()<0.5?'A':'B'; if(rows[r].queue.length<30) rows[r].queue.push(nextCar()); render(); }, 3200);
+  setInterval(()=>{ ['A','B'].forEach(r=>{ if(rows[r].queue.length>=SIZE && Math.random()<0.5){ rows[r].queue=rows[r].queue.slice(SIZE); rows[r].wave++; } }); render(); }, 11000);
+  // ============================================================
+
+  function tick(){const t=new Date();document.getElementById('clock').textContent=t.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}
+  setInterval(tick,1000);tick();
+
+  function nameBlock(p){
+    if(p.names.length===1) return '<div class="names"><div class="nm">'+esc(p.names[0])+'</div></div>';
+    return '<div class="names multi">'+p.names.map(n=>'<div class="nm">'+esc(n)+'</div>').join('')+'</div>';
+  }
+  function render(){
+    ['A','B'].forEach(row=>{
+      const r=rows[row], q=r.queue;
+      const cones=q.slice(0,SIZE), deck=q.slice(SIZE,SIZE*2), buf=q.slice(SIZE*2);
+      const waves=Math.ceil(q.length/SIZE);
+      document.getElementById('meta'+row).textContent='Wave '+r.wave+(waves>1?' · '+waves+' staged':'');
+      const wrap=document.getElementById('cones'+row);wrap.innerHTML='';
+      for(let i=0;i<SIZE;i++){
+        const c=cones[i];const div=document.createElement('div');
+        div.className='cone '+(c?'filled':'empty')+(c&&c.names.length>1?' multi':'');
+        div.innerHTML='<div class="num">'+(i+1)+'</div>'+(c?nameBlock(c):'<div class="names"><span class="placeholder">—</span></div>');
+        wrap.appendChild(div);
+      }
+      const d=document.getElementById('deck'+row);d.innerHTML='';
+      if(deck.length===0)d.innerHTML='<div class="deck-empty">no cars staged yet</div>';
+      else deck.slice(0,DECK_SHOWN).forEach(p=>{const ch=document.createElement('div');
+        ch.className='chip'+(p.names.length>1?' multi':'');
+        ch.textContent = p.names.length>1 ? p.names.join(', ') : p.names[0]; d.appendChild(ch);});
+      const more=document.getElementById('more'+row);
+      const hidden=Math.max(0,deck.length-DECK_SHOWN)+buf.length;
+      more.textContent = hidden>0 ? '+ '+hidden+' more in the queue' : '';
+    });
+  }
+  function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+  render();
+</script>
+</body>
+</html>
