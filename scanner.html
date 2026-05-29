@@ -1,0 +1,233 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Car Rider Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Libre+Franklin:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --paper:#f6f1e7; --ink:#16233b; --ink-soft:#516079;
+    --cone:#e8721c; --cone-deep:#c25908; --line:#d8cfbd; --card:#fffdf8;
+    --deck-ink:#28406e; --good:#2f9e57; --bad:#c0392b;
+    --shadow:0 2px 0 #e3dac8, 0 10px 26px -14px rgba(22,35,59,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Libre Franklin',system-ui,sans-serif;background:var(--paper);color:var(--ink);
+    padding:14px 14px 28px;max-width:680px;margin:0 auto}
+  header{display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
+  .cone-mark{width:34px;height:34px;flex:0 0 auto;position:relative}
+  .cone-mark::before{content:"";position:absolute;inset:auto 5px 3px 5px;height:5px;border-radius:3px;background:var(--cone-deep)}
+  .cone-mark::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
+    width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:24px solid var(--cone)}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:12px;font-weight:600}
+
+  .label{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin:6px 0}
+  .rowpick{display:flex;gap:10px;margin-bottom:14px}
+  .rowpick button{flex:1;font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;border:2px solid var(--line);
+    background:var(--card);color:var(--ink-soft);border-radius:14px;padding:16px;cursor:pointer;transition:.12s}
+  .rowpick button.on{background:var(--cone);color:#fff;border-color:var(--cone-deep);box-shadow:0 3px 0 var(--cone-deep)}
+
+  .scanbtn{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;border:none;border-radius:14px;
+    padding:18px;cursor:pointer;background:var(--ink);color:var(--paper);box-shadow:0 3px 0 #0c1626;margin-bottom:8px}
+  .scanbtn.live{background:var(--bad);box-shadow:0 3px 0 #8e2a20}
+  #reader{width:100%;border-radius:14px;overflow:hidden;margin-bottom:10px;display:none}
+  #reader.show{display:block}
+
+  .manual{display:flex;gap:8px;margin-bottom:8px}
+  .manual input{flex:1;font-family:inherit;font-size:17px;border:2px solid var(--line);border-radius:12px;padding:13px;background:var(--card);color:var(--ink)}
+  .manual input:focus{outline:none;border-color:var(--cone)}
+  .manual button{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:0 16px;cursor:pointer;background:#efe7d6;color:var(--ink)}
+  .manual button:active{transform:translateY(1px)}
+
+  .toast{min-height:24px;font-weight:700;font-size:15px;margin:6px 0 14px;padding:0 2px}
+  .toast.good{color:var(--good)} .toast.bad{color:var(--bad)}
+
+  .qhead{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+  .qhead .row-meta{font-family:'Bricolage Grotesque';font-weight:700;font-size:13px;color:#fff;background:var(--ink);padding:3px 10px;border-radius:999px}
+  .advance{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:none;border-radius:13px;
+    padding:15px;cursor:pointer;background:var(--deck-ink);color:#fff;box-shadow:0 3px 0 #1b2c4d;margin:4px 0 14px}
+  .advance:disabled{background:#c3cee3;box-shadow:none;cursor:not-allowed}
+  .qlist{display:flex;flex-direction:column;gap:6px}
+  .qitem{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 11px}
+  .qitem .pos{flex:0 0 auto;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+    font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;background:var(--cone);color:#fff}
+  .qitem.deck .pos{background:#efe7d6;color:var(--ink-soft)}
+  .qitem .nm{flex:1;font-weight:700;font-size:15px}
+  .qitem .x{flex:0 0 auto;width:34px;height:34px;border-radius:8px;border:none;background:#f3ece0;color:var(--ink-soft);
+    font-size:18px;font-weight:800;cursor:pointer}
+  .qitem .x:active{background:#e7dcc9}
+  .qempty{color:var(--ink-soft);font-style:italic;font-size:14px;padding:8px 2px}
+  .divider{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin:10px 0 4px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="cone-mark"></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan down the lane &middot; tap a name to pull a car out</div></div>
+  </header>
+
+  <div class="label">Scanning into</div>
+  <div class="rowpick">
+    <button id="rowA" class="on" onclick="setRow('A')">Row A</button>
+    <button id="rowB" onclick="setRow('B')">Row B</button>
+  </div>
+
+  <button class="scanbtn" id="scanBtn" onclick="toggleScan()">📷 Start camera scan</button>
+  <div id="reader"></div>
+
+  <div class="label">No tag? Type the student's name</div>
+  <div class="manual">
+    <input id="nameInput" type="text" placeholder="e.g. Sam Carter" autocomplete="off"
+      onkeydown="if(event.key==='Enter')addManual()">
+    <button onclick="addManual()">Add</button>
+  </div>
+
+  <div class="label">Or enter a tag number</div>
+  <div class="manual">
+    <input id="idInput" type="text" inputmode="numeric" placeholder="e.g. 1042" autocomplete="off"
+      onkeydown="if(event.key==='Enter')addById()">
+    <button onclick="addById()">Add</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="qhead">
+    <div class="label" style="margin:0">In this row now</div>
+    <div class="row-meta" id="rowMeta">Wave 1</div>
+  </div>
+  <button class="advance" id="advBtn" onclick="advance()">Wave loaded &amp; gone — Advance Row A ▶</button>
+  <div class="qlist" id="qlist"></div>
+
+<script>
+  // ============================================================
+  //  CONFIG — your live backend. Edit only if you redeploy or
+  //  rotate the key.
+  // ============================================================
+  const API = 'https://script.google.com/macros/s/AKfycbx4S-v420NLWK2-5EYQaxs9-zCzOJpCqA_j4mttcdzCLK7-ePCgUdml5zbLgBGb79XhWg/exec';
+  const KEY = 'oces-2026-2027';
+  // ============================================================
+
+  const SIZE = 10;
+  let row = 'A';
+  let board = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
+  let scanner = null, scanning = false;
+  let lastCode = '', lastCodeAt = 0;
+
+  async function call(params){
+    const u = new URL(API);
+    u.searchParams.set('key', KEY);
+    for(const k in params) u.searchParams.set(k, params[k]);
+    u.searchParams.set('t', Date.now());
+    const r = await fetch(u.toString());
+    return await r.json();
+  }
+
+  function setRow(r){
+    row = r;
+    document.getElementById('rowA').className = r==='A'?'on':'';
+    document.getElementById('rowB').className = r==='B'?'on':'';
+    document.getElementById('advBtn').innerHTML = 'Wave loaded &amp; gone — Advance Row '+r+' ▶';
+    refresh();
+  }
+
+  function toast(msg, ok){
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast ' + (ok ? 'good' : 'bad');
+    if(ok){ clearTimeout(t._h); t._h = setTimeout(()=>{ t.textContent=''; t.className='toast'; }, 4000); }
+  }
+
+  async function addById(){
+    const el = document.getElementById('idInput');
+    const v = el.value.trim(); if(!v) return;
+    const res = await call({action:'scan', row:row, familyId:v});
+    handleScanResult(res, v); el.value='';
+  }
+  async function addManual(){
+    const el = document.getElementById('nameInput');
+    const v = el.value.trim(); if(!v) return;
+    const res = await call({action:'manual', row:row, name:v});
+    if(res && res.ok){ board = res.board; render(); toast('Added '+v+' to Row '+row, true); el.value=''; }
+    else toast('Could not add — check connection', false);
+  }
+  function handleScanResult(res, code){
+    if(res && res.ok){
+      board = res.board; render();
+      const added = res.board[row].queue.slice(-1)[0];
+      toast('✓ '+(added ? added.names.join(', ') : 'car')+' → Row '+row, true);
+    } else if(res && res.error === 'unknown tag'){
+      toast('Tag '+code+' not in roster — type the name instead', false);
+    } else {
+      toast('Could not add — check connection', false);
+    }
+  }
+
+  async function advance(){
+    const res = await call({action:'advance', row:row});
+    if(res && res.ok){ board = res.board; render(); toast('Row '+row+' advanced — next wave up', true); }
+    else toast('Could not advance — check connection', false);
+  }
+  async function removeCar(id){
+    const res = await call({action:'remove', id:id});
+    if(res && res.ok){ board = res.board; render(); toast('Car removed', true); }
+    else toast('Could not remove — check connection', false);
+  }
+
+  async function refresh(){
+    try{ const data = await call({action:'board'}); if(data && data.A){ board = data; render(); } }
+    catch(e){ /* ignore */ }
+  }
+
+  function render(){
+    const q = board[row].queue || [];
+    document.getElementById('rowMeta').textContent =
+      'Wave '+board[row].wave + (q.length>SIZE ? ' · '+Math.ceil(q.length/SIZE)+' staged' : '');
+    document.getElementById('advBtn').disabled = q.length===0;
+    const list = document.getElementById('qlist'); list.innerHTML='';
+    if(q.length===0){ list.innerHTML='<div class="qempty">Nothing scanned into Row '+row+' yet.</div>'; return; }
+    q.forEach((c,i)=>{
+      if(i===SIZE){ const d=document.createElement('div'); d.className='divider'; d.textContent='— on deck / further back —'; list.appendChild(d); }
+      const item = document.createElement('div');
+      item.className = 'qitem' + (i>=SIZE?' deck':'');
+      item.innerHTML = '<div class="pos">'+(i<SIZE?(i+1):'•')+'</div>'+
+        '<div class="nm">'+esc(c.names.join(', '))+'</div>'+
+        '<button class="x" title="pull this car out" onclick="removeCar(\''+c.id+'\')">×</button>';
+      list.appendChild(item);
+    });
+  }
+
+  function toggleScan(){
+    if(scanning){ stopScan(); return; }
+    if(typeof Html5Qrcode === 'undefined'){ toast('Scanner library still loading — try again in a second', false); return; }
+    const reader = document.getElementById('reader'); reader.classList.add('show');
+    scanner = new Html5Qrcode('reader');
+    scanner.start({ facingMode:'environment' }, { fps:10, qrbox:{width:240,height:240} },
+      onDecode, ()=>{}).then(()=>{
+        scanning = true;
+        const b = document.getElementById('scanBtn'); b.textContent='■ Stop camera'; b.classList.add('live');
+      }).catch(err=>{ toast('Camera unavailable: '+err, false); reader.classList.remove('show'); });
+  }
+  function stopScan(){
+    if(scanner){ scanner.stop().then(()=>scanner.clear()).catch(()=>{}); }
+    scanning = false;
+    document.getElementById('reader').classList.remove('show');
+    const b = document.getElementById('scanBtn'); b.textContent='📷 Start camera scan'; b.classList.remove('live');
+  }
+  async function onDecode(text){
+    const now = Date.now();
+    if(text === lastCode && now - lastCodeAt < 3000) return; // ignore repeat reads of same tag
+    lastCode = text; lastCodeAt = now;
+    const res = await call({action:'scan', row:row, familyId:String(text).trim()});
+    handleScanResult(res, text);
+  }
+
+  setRow('A');
+  setInterval(refresh, 5000); // keep the row view fresh if the other iPad changes things
+</script>
+</body>
+</html>
