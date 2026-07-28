@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,6 +13,7 @@
     --paper:#f6f1e7; --ink:#16233b; --ink-soft:#516079;
     --cone:#e8721c; --cone-deep:#c25908; --line:#d8cfbd; --card:#fffdf8;
     --deck-ink:#28406e; --good:#2f9e57; --bad:#c0392b;
+    --combine:#7a2fb0; --combine-deep:#5a1f86;
     --shadow:0 2px 0 #e3dac8, 0 10px 26px -14px rgba(22,35,59,.35);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -26,9 +26,8 @@
     width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:24px solid var(--cone)}
   h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.01em}
   .sub{color:var(--ink-soft);font-size:12px;font-weight:600}
-
   .label{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin:6px 0}
-  .rowpick{display:flex;gap:10px;margin-bottom:14px}
+  .rowpick{display:flex;gap:10px;margin-bottom:12px}
   .rowpick button{flex:1;font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;border:2px solid var(--line);
     background:var(--card);color:var(--ink-soft);border-radius:14px;padding:16px;cursor:pointer;transition:.12s}
   .rowpick button.on{background:var(--cone);color:#fff;border-color:var(--cone-deep);box-shadow:0 3px 0 var(--cone-deep)}
@@ -39,15 +38,21 @@
   #reader{width:100%;border-radius:14px;overflow:hidden;margin-bottom:10px;display:none}
   #reader.show{display:block}
 
+  .combinebtn{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:2px solid var(--combine);
+    border-radius:14px;padding:14px;cursor:pointer;background:#fff;color:var(--combine);margin-bottom:8px;transition:.12s}
+  .combinebtn.on{background:var(--combine);color:#fff;border-color:var(--combine-deep);box-shadow:0 3px 0 var(--combine-deep)}
+  .banner{display:none;background:var(--combine);color:#fff;border-radius:12px;padding:11px 13px;margin-bottom:10px;
+    font-weight:700;font-size:14px;line-height:1.3}
+  .banner.show{display:block}
+  .banner b{font-family:'Bricolage Grotesque';font-weight:800}
+
   .manual{display:flex;gap:8px;margin-bottom:8px}
   .manual input{flex:1;font-family:inherit;font-size:17px;border:2px solid var(--line);border-radius:12px;padding:13px;background:var(--card);color:var(--ink)}
   .manual input:focus{outline:none;border-color:var(--cone)}
   .manual button{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:0 16px;cursor:pointer;background:#efe7d6;color:var(--ink)}
   .manual button:active{transform:translateY(1px)}
-
   .toast{min-height:24px;font-weight:700;font-size:15px;margin:6px 0 14px;padding:0 2px}
-  .toast.good{color:var(--good)} .toast.bad{color:var(--bad)}
-
+  .toast.good{color:var(--good)} .toast.bad{color:var(--bad)} .toast.combine{color:var(--combine)}
   .qhead{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
   .qhead .row-meta{font-family:'Bricolage Grotesque';font-weight:700;font-size:13px;color:#fff;background:var(--ink);padding:3px 10px;border-radius:999px}
   .advance{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:none;border-radius:13px;
@@ -59,6 +64,7 @@
     font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;background:var(--cone);color:#fff}
   .qitem.deck .pos{background:#efe7d6;color:var(--ink-soft)}
   .qitem .nm{flex:1;font-weight:700;font-size:15px}
+  .qitem .cnt{font-size:11px;font-weight:800;color:var(--combine);margin-left:6px}
   .qitem .x{flex:0 0 auto;width:34px;height:34px;border-radius:8px;border:none;background:#f3ece0;color:var(--ink-soft);
     font-size:18px;font-weight:800;cursor:pointer}
   .qitem .x:active{background:#e7dcc9}
@@ -80,6 +86,9 @@
 
   <button class="scanbtn" id="scanBtn" onclick="toggleScan()">📷 Start camera scan</button>
   <div id="reader"></div>
+
+  <button class="combinebtn" id="combineBtn" onclick="toggleCombine()">👥 Same car — combine tags</button>
+  <div class="banner" id="banner"><b>SAME CAR MODE.</b> Scan every tag for this one car — they'll all share one cone. Tap "Done" when the car is complete.</div>
 
   <div class="label">No tag? Type the student's name</div>
   <div class="manual">
@@ -118,6 +127,7 @@
   let board = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
   let scanner = null, scanning = false;
   let lastCode = '', lastCodeAt = 0;
+  let combining = false, combineAnchored = false;
 
   async function call(params){
     const u = new URL(API);
@@ -133,54 +143,75 @@
     document.getElementById('rowA').className = r==='A'?'on':'';
     document.getElementById('rowB').className = r==='B'?'on':'';
     document.getElementById('advBtn').innerHTML = 'Wave loaded &amp; gone — Advance Row '+r+' ▶';
+    if(combining){ combining=false; combineAnchored=false; updateCombineUI(); } // safety: end combine on lane switch
     refresh();
   }
 
-  function toast(msg, ok){
+  function toast(msg, kind){
     const t = document.getElementById('toast');
-    t.textContent = msg; t.className = 'toast ' + (ok ? 'good' : 'bad');
-    if(ok){ clearTimeout(t._h); t._h = setTimeout(()=>{ t.textContent=''; t.className='toast'; }, 4000); }
+    t.textContent = msg; t.className = 'toast ' + (kind || 'good');
+    if(kind !== 'bad'){ clearTimeout(t._h); t._h = setTimeout(()=>{ t.textContent=''; t.className='toast'; }, 4000); }
   }
 
-  async function addById(){
-    const el = document.getElementById('idInput');
-    const v = el.value.trim(); if(!v) return;
-    const res = await call({action:'scan', row:row, familyId:v});
-    handleScanResult(res, v); el.value='';
+  function toggleCombine(){
+    combining = !combining;
+    combineAnchored = false;
+    updateCombineUI();
+    if(combining) toast('Same-car mode on — scan all tags for one car', 'combine');
+    else toast('Same-car mode off', 'combine');
   }
-  async function addManual(){
-    const el = document.getElementById('nameInput');
-    const v = el.value.trim(); if(!v) return;
-    const res = await call({action:'manual', row:row, name:v});
-    if(res && res.ok){ board = res.board; render(); toast('Added '+v+' to Row '+row, true); el.value=''; }
-    else toast('Could not add — check connection', false);
+  function updateCombineUI(){
+    document.getElementById('combineBtn').className = 'combinebtn' + (combining?' on':'');
+    document.getElementById('combineBtn').textContent = combining ? '✓ Done — that\u2019s one car' : '👥 Same car — combine tags';
+    document.getElementById('banner').className = 'banner' + (combining?' show':'');
   }
-  function handleScanResult(res, code){
+
+  // unified add: decides whether this add starts a new car or joins the current one
+  async function place(action, field, value, code){
+    const attach = combining && combineAnchored;
+    const params = { action, row };
+    params[field] = value;
+    if(attach) params.same = 1;
+    let res;
+    try { res = await call(params); }
+    catch(e){ toast('Could not add — check connection', 'bad'); return; }
+
     if(res && res.ok){
       board = res.board; render();
-      const added = res.board[row].queue.slice(-1)[0];
-      toast('✓ '+(added ? added.names.join(', ') : 'car')+' → Row '+row, true);
+      if(combining) combineAnchored = true; // first add anchors the car; rest attach
+      const q = board[row].queue;
+      const car = q[q.length-1];
+      if(attach) toast('+ added — this car now has '+ (car?car.names.length:'?') +' names', 'combine');
+      else toast('✓ '+(car?car.names.join(', '):'car')+' → Row '+row, 'good');
     } else if(res && res.error === 'unknown tag'){
-      toast('Tag '+code+' not in roster — type the name instead', false);
+      toast('Tag '+code+' not in roster — type the name instead', 'bad');
     } else {
-      toast('Could not add — check connection', false);
+      toast('Could not add — check connection', 'bad');
     }
   }
 
-  async function advance(){
-    const res = await call({action:'advance', row:row});
-    if(res && res.ok){ board = res.board; render(); toast('Row '+row+' advanced — next wave up', true); }
-    else toast('Could not advance — check connection', false);
+  function addById(){
+    const el = document.getElementById('idInput'); const v = el.value.trim(); if(!v) return;
+    place('scan','familyId',v,v); el.value='';
   }
-  async function removeCar(id){
-    const res = await call({action:'remove', id:id});
-    if(res && res.ok){ board = res.board; render(); toast('Car removed', true); }
-    else toast('Could not remove — check connection', false);
+  function addManual(){
+    const el = document.getElementById('nameInput'); const v = el.value.trim(); if(!v) return;
+    place('manual','name',v,v); el.value='';
   }
 
+  async function advance(){
+    if(combining){ combining=false; combineAnchored=false; updateCombineUI(); }
+    let res; try { res = await call({action:'advance', row:row}); } catch(e){ toast('Could not advance — check connection','bad'); return; }
+    if(res && res.ok){ board = res.board; render(); toast('Row '+row+' advanced — next wave up', 'good'); }
+    else toast('Could not advance — check connection', 'bad');
+  }
+  async function removeCar(id){
+    let res; try { res = await call({action:'remove', id:id}); } catch(e){ toast('Could not remove — check connection','bad'); return; }
+    if(res && res.ok){ board = res.board; render(); toast('Car removed', 'good'); }
+    else toast('Could not remove — check connection', 'bad');
+  }
   async function refresh(){
-    try{ const data = await call({action:'board'}); if(data && data.A){ board = data; render(); } }
-    catch(e){ /* ignore */ }
+    try{ const data = await call({action:'board'}); if(data && data.A){ board = data; render(); } }catch(e){}
   }
 
   function render(){
@@ -194,8 +225,9 @@
       if(i===SIZE){ const d=document.createElement('div'); d.className='divider'; d.textContent='— on deck / further back —'; list.appendChild(d); }
       const item = document.createElement('div');
       item.className = 'qitem' + (i>=SIZE?' deck':'');
+      const multi = c.names.length>1 ? '<span class="cnt">'+c.names.length+' in car</span>' : '';
       item.innerHTML = '<div class="pos">'+(i<SIZE?(i+1):'•')+'</div>'+
-        '<div class="nm">'+esc(c.names.join(', '))+'</div>'+
+        '<div class="nm">'+esc(c.names.join(', '))+multi+'</div>'+
         '<button class="x" title="pull this car out" onclick="removeCar(\''+c.id+'\')">×</button>';
       list.appendChild(item);
     });
@@ -203,14 +235,14 @@
 
   function toggleScan(){
     if(scanning){ stopScan(); return; }
-    if(typeof Html5Qrcode === 'undefined'){ toast('Scanner library still loading — try again in a second', false); return; }
+    if(typeof Html5Qrcode === 'undefined'){ toast('Scanner library still loading — try again in a second', 'bad'); return; }
     const reader = document.getElementById('reader'); reader.classList.add('show');
     scanner = new Html5Qrcode('reader');
     scanner.start({ facingMode:'environment' }, { fps:10, qrbox:{width:240,height:240} },
       onDecode, ()=>{}).then(()=>{
         scanning = true;
         const b = document.getElementById('scanBtn'); b.textContent='■ Stop camera'; b.classList.add('live');
-      }).catch(err=>{ toast('Camera unavailable: '+err, false); reader.classList.remove('show'); });
+      }).catch(err=>{ toast('Camera unavailable: '+err, 'bad'); reader.classList.remove('show'); });
   }
   function stopScan(){
     if(scanner){ scanner.stop().then(()=>scanner.clear()).catch(()=>{}); }
@@ -218,16 +250,16 @@
     document.getElementById('reader').classList.remove('show');
     const b = document.getElementById('scanBtn'); b.textContent='📷 Start camera scan'; b.classList.remove('live');
   }
-  async function onDecode(text){
+  function onDecode(text){
     const now = Date.now();
     if(text === lastCode && now - lastCodeAt < 3000) return; // ignore repeat reads of same tag
     lastCode = text; lastCodeAt = now;
-    const res = await call({action:'scan', row:row, familyId:String(text).trim()});
-    handleScanResult(res, text);
+    place('scan','familyId',String(text).trim(),text);
   }
 
   setRow('A');
-  setInterval(refresh, 5000); // keep the row view fresh if the other iPad changes things
+  updateCombineUI();
+  setInterval(refresh, 5000);
 </script>
 </body>
 </html>
