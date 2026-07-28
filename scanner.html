@@ -31,13 +31,11 @@
   .rowpick button{flex:1;font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;border:2px solid var(--line);
     background:var(--card);color:var(--ink-soft);border-radius:14px;padding:16px;cursor:pointer;transition:.12s}
   .rowpick button.on{background:var(--cone);color:#fff;border-color:var(--cone-deep);box-shadow:0 3px 0 var(--cone-deep)}
-
   .scanbtn{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;border:none;border-radius:14px;
     padding:18px;cursor:pointer;background:var(--ink);color:var(--paper);box-shadow:0 3px 0 #0c1626;margin-bottom:8px}
   .scanbtn.live{background:var(--bad);box-shadow:0 3px 0 #8e2a20}
   #reader{width:100%;border-radius:14px;overflow:hidden;margin-bottom:10px;display:none}
   #reader.show{display:block}
-
   .combinebtn{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:2px solid var(--combine);
     border-radius:14px;padding:14px;cursor:pointer;background:#fff;color:var(--combine);margin-bottom:8px;transition:.12s}
   .combinebtn.on{background:var(--combine);color:#fff;border-color:var(--combine-deep);box-shadow:0 3px 0 var(--combine-deep)}
@@ -45,7 +43,6 @@
     font-weight:700;font-size:14px;line-height:1.3}
   .banner.show{display:block}
   .banner b{font-family:'Bricolage Grotesque';font-weight:800}
-
   .manual{display:flex;gap:8px;margin-bottom:8px}
   .manual input{flex:1;font-family:inherit;font-size:17px;border:2px solid var(--line);border-radius:12px;padding:13px;background:var(--card);color:var(--ink)}
   .manual input:focus{outline:none;border-color:var(--cone)}
@@ -70,6 +67,12 @@
   .qitem .x:active{background:#e7dcc9}
   .qempty{color:var(--ink-soft);font-style:italic;font-size:14px;padding:8px 2px}
   .divider{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin:10px 0 4px}
+  /* end-of-day */
+  .endday{margin-top:26px;border-top:2px dashed var(--line);padding-top:16px}
+  .closeday{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:2px solid var(--bad);
+    border-radius:13px;padding:15px;cursor:pointer;background:#fff;color:var(--bad);transition:.12s}
+  .closeday:active{background:var(--bad);color:#fff}
+  .endhint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:8px}
 </style>
 </head>
 <body>
@@ -113,6 +116,11 @@
   <button class="advance" id="advBtn" onclick="advance()">Wave loaded &amp; gone — Advance Row A ▶</button>
   <div class="qlist" id="qlist"></div>
 
+  <div class="endday">
+    <button class="closeday" onclick="closeDay()">🏁 Car Riders Closed — end the day</button>
+    <div class="endhint">Clears both rows and resets to Wave 1 for tomorrow. Asks first.</div>
+  </div>
+
 <script>
   // ============================================================
   //  CONFIG — your live backend. Edit only if you redeploy or
@@ -143,7 +151,7 @@
     document.getElementById('rowA').className = r==='A'?'on':'';
     document.getElementById('rowB').className = r==='B'?'on':'';
     document.getElementById('advBtn').innerHTML = 'Wave loaded &amp; gone — Advance Row '+r+' ▶';
-    if(combining){ combining=false; combineAnchored=false; updateCombineUI(); } // safety: end combine on lane switch
+    if(combining){ combining=false; combineAnchored=false; updateCombineUI(); }
     refresh();
   }
 
@@ -166,28 +174,23 @@
     document.getElementById('banner').className = 'banner' + (combining?' show':'');
   }
 
-  // unified add: decides whether this add starts a new car or joins the current one
   async function place(action, field, value, code){
     const attach = combining && combineAnchored;
     const params = { action, row };
     params[field] = value;
     if(attach) params.same = 1;
     let res;
-    try { res = await call(params); }
-    catch(e){ toast('Could not add — check connection', 'bad'); return; }
+    try { res = await call(params); } catch(e){ toast('Could not add — check connection', 'bad'); return; }
 
     if(res && res.ok){
       board = res.board; render();
-      if(combining) combineAnchored = true; // first add anchors the car; rest attach
-      const q = board[row].queue;
-      const car = q[q.length-1];
+      if(combining) combineAnchored = true;
+      const q = board[row].queue; const car = q[q.length-1];
       if(attach) toast('+ added — this car now has '+ (car?car.names.length:'?') +' names', 'combine');
       else toast('✓ '+(car?car.names.join(', '):'car')+' → Row '+row, 'good');
     } else if(res && res.error === 'unknown tag'){
       toast('Tag '+code+' not in roster — type the name instead', 'bad');
-    } else {
-      toast('Could not add — check connection', 'bad');
-    }
+    } else { toast('Could not add — check connection', 'bad'); }
   }
 
   function addById(){
@@ -209,6 +212,12 @@
     let res; try { res = await call({action:'remove', id:id}); } catch(e){ toast('Could not remove — check connection','bad'); return; }
     if(res && res.ok){ board = res.board; render(); toast('Car removed', 'good'); }
     else toast('Could not remove — check connection', 'bad');
+  }
+  async function closeDay(){
+    if(!confirm('End car rider for today?\n\nThis clears both rows and resets to Wave 1 for tomorrow.')) return;
+    let res; try { res = await call({action:'close'}); } catch(e){ toast('Could not close — check connection','bad'); return; }
+    if(res && res.ok){ board = res.board; if(combining){combining=false;combineAnchored=false;updateCombineUI();} render(); toast('Car riders closed — board cleared for tomorrow', 'good'); }
+    else toast('Could not close — check connection', 'bad');
   }
   async function refresh(){
     try{ const data = await call({action:'board'}); if(data && data.A){ board = data; render(); } }catch(e){}
@@ -252,7 +261,7 @@
   }
   function onDecode(text){
     const now = Date.now();
-    if(text === lastCode && now - lastCodeAt < 3000) return; // ignore repeat reads of same tag
+    if(text === lastCode && now - lastCodeAt < 3000) return;
     lastCode = text; lastCodeAt = now;
     place('scan','familyId',String(text).trim(),text);
   }
