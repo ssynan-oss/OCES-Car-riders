@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -65,6 +64,17 @@
   .chip.multi{font-size:1.8vh;font-weight:700}
   .deck-empty{color:#8aa0cc;font-style:italic;font-weight:600;font-size:1.9vh}
   .more{font-size:1.7vh;font-weight:700;color:var(--ink-soft);margin-top:.8vh}
+
+  /* full-screen messages (ready / dismissal complete) */
+  .message{flex:1;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1.4vh}
+  .msg-mark{width:12vh;height:12vh;position:relative;margin-bottom:1vh}
+  .msg-mark::before{content:"";position:absolute;inset:auto 12% 8% 12%;height:1.6vh;border-radius:6px;background:var(--cone-deep)}
+  .msg-mark::after{content:"";position:absolute;left:50%;bottom:18%;transform:translateX(-50%);
+    width:0;height:0;border-left:4vh solid transparent;border-right:4vh solid transparent;border-bottom:8.6vh solid var(--cone)}
+  .msg-title{font-family:'Bricolage Grotesque';font-weight:800;font-size:6.5vh;line-height:1.05;letter-spacing:-.01em}
+  .msg-sub{font-size:2.8vh;font-weight:600;color:var(--ink-soft)}
+  .message.complete .msg-mark::after{border-bottom-color:#2f9e57}
+  .message.complete .msg-mark::before{background:#1f7a44}
 </style>
 </head>
 <body>
@@ -77,7 +87,8 @@
     <div><div class="clock" id="clock">—</div>
       <div class="status"><span id="statusText">connecting…</span><span class="dot down" id="dot"></span></div></div>
   </header>
-  <div class="board">
+
+  <div class="board" id="board">
     <section class="col">
       <div class="row-top"><div class="row-name">Row A</div><div class="row-meta" id="metaA"></div></div>
       <div class="zone"><span class="pip"></span>At the cones — loading now</div>
@@ -97,6 +108,12 @@
       </div>
     </section>
   </div>
+
+  <div class="message" id="message">
+    <div class="msg-mark"></div>
+    <div class="msg-title" id="msgTitle">Car Rider Board</div>
+    <div class="msg-sub" id="msgSub">Ready — waiting for the first car.</div>
+  </div>
 </div>
 
 <script>
@@ -110,7 +127,7 @@
   // ============================================================
 
   const SIZE = 10, DECK_SHOWN = 8;
-  let rows = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
+  let rows = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]}, closed:false };
   let lastOk = 0;
 
   function tick(){
@@ -134,7 +151,7 @@
       const r = await fetch(u.toString());
       const data = await r.json();
       if(data && data.A && data.B){ rows = data; lastOk = Date.now(); render(); }
-    }catch(e){ /* keep last good board; status dot will show reconnecting */ }
+    }catch(e){ /* keep last good board */ }
   }
   setInterval(poll, POLL_MS); poll();
 
@@ -142,7 +159,29 @@
     if(p.names.length === 1) return '<div class="names"><div class="nm">'+esc(p.names[0])+'</div></div>';
     return '<div class="names multi">'+p.names.map(n=>'<div class="nm">'+esc(n)+'</div>').join('')+'</div>';
   }
+
+  function showMessage(kind){
+    document.getElementById('board').style.display = 'none';
+    const m = document.getElementById('message');
+    m.style.display = 'flex';
+    if(kind === 'complete'){
+      m.className = 'message complete';
+      document.getElementById('msgTitle').textContent = 'Car Rider Dismissal Complete';
+      document.getElementById('msgSub').textContent = 'All students picked up — see you tomorrow!';
+    } else {
+      m.className = 'message ready';
+      document.getElementById('msgTitle').textContent = 'Car Rider Board';
+      document.getElementById('msgSub').textContent = 'Ready — waiting for the first car.';
+    }
+  }
+
   function render(){
+    const qA = rows.A.queue || [], qB = rows.B.queue || [];
+    if(qA.length + qB.length === 0){ showMessage(rows.closed ? 'complete' : 'ready'); return; }
+
+    document.getElementById('message').style.display = 'none';
+    document.getElementById('board').style.display = 'grid';
+
     ['A','B'].forEach(row=>{
       const r = rows[row], q = r.queue || [];
       const cones = q.slice(0,SIZE), deck = q.slice(SIZE,SIZE*2), buf = q.slice(SIZE*2);
