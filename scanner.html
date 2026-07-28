@@ -67,7 +67,6 @@
   .qitem .x:active{background:#e7dcc9}
   .qempty{color:var(--ink-soft);font-style:italic;font-size:14px;padding:8px 2px}
   .divider{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin:10px 0 4px}
-  /* end-of-day */
   .endday{margin-top:26px;border-top:2px dashed var(--line);padding-top:16px}
   .closeday{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:2px solid var(--bad);
     border-radius:13px;padding:15px;cursor:pointer;background:#fff;color:var(--bad);transition:.12s}
@@ -91,7 +90,7 @@
   <div id="reader"></div>
 
   <button class="combinebtn" id="combineBtn" onclick="toggleCombine()">👥 Same car — combine tags</button>
-  <div class="banner" id="banner"><b>SAME CAR MODE.</b> Scan every tag for this one car — they'll all share one cone. Tap "Done" when the car is complete.</div>
+  <div class="banner" id="banner"><b>SAME CAR MODE.</b> Every tag you add now joins ONE car / one cone. Tap "Done" when this car is complete.</div>
 
   <div class="label">No tag? Type the student's name</div>
   <div class="manual">
@@ -135,7 +134,7 @@
   let board = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
   let scanner = null, scanning = false;
   let lastCode = '', lastCodeAt = 0;
-  let combining = false, combineAnchored = false;
+  let combining = false;   // when ON, every add joins the current car (one cone)
 
   async function call(params){
     const u = new URL(API);
@@ -151,7 +150,7 @@
     document.getElementById('rowA').className = r==='A'?'on':'';
     document.getElementById('rowB').className = r==='B'?'on':'';
     document.getElementById('advBtn').innerHTML = 'Wave loaded &amp; gone — Advance Row '+r+' ▶';
-    if(combining){ combining=false; combineAnchored=false; updateCombineUI(); }
+    endCombine();
     refresh();
   }
 
@@ -163,19 +162,19 @@
 
   function toggleCombine(){
     combining = !combining;
-    combineAnchored = false;
     updateCombineUI();
-    if(combining) toast('Same-car mode on — scan all tags for one car', 'combine');
-    else toast('Same-car mode off', 'combine');
+    toast(combining ? 'Same-car mode ON — add all tags for one car' : 'Same-car mode off', 'combine');
   }
+  function endCombine(){ if(combining){ combining = false; updateCombineUI(); } }
   function updateCombineUI(){
     document.getElementById('combineBtn').className = 'combinebtn' + (combining?' on':'');
     document.getElementById('combineBtn').textContent = combining ? '✓ Done — that\u2019s one car' : '👥 Same car — combine tags';
     document.getElementById('banner').className = 'banner' + (combining?' show':'');
   }
 
+  // When same-car mode is ON, every add attaches to the current car (one cone).
   async function place(action, field, value, code){
-    const attach = combining && combineAnchored;
+    const attach = combining;
     const params = { action, row };
     params[field] = value;
     if(attach) params.same = 1;
@@ -184,9 +183,9 @@
 
     if(res && res.ok){
       board = res.board; render();
-      if(combining) combineAnchored = true;
       const q = board[row].queue; const car = q[q.length-1];
-      if(attach) toast('+ added — this car now has '+ (car?car.names.length:'?') +' names', 'combine');
+      const n = car ? car.names.length : 0;
+      if(attach) toast('✓ combined — this car now has '+n+' in it', 'combine');
       else toast('✓ '+(car?car.names.join(', '):'car')+' → Row '+row, 'good');
     } else if(res && res.error === 'unknown tag'){
       toast('Tag '+code+' not in roster — type the name instead', 'bad');
@@ -203,7 +202,7 @@
   }
 
   async function advance(){
-    if(combining){ combining=false; combineAnchored=false; updateCombineUI(); }
+    endCombine();
     let res; try { res = await call({action:'advance', row:row}); } catch(e){ toast('Could not advance — check connection','bad'); return; }
     if(res && res.ok){ board = res.board; render(); toast('Row '+row+' advanced — next wave up', 'good'); }
     else toast('Could not advance — check connection', 'bad');
@@ -215,8 +214,9 @@
   }
   async function closeDay(){
     if(!confirm('End car rider for today?\n\nThis clears both rows and resets to Wave 1 for tomorrow.')) return;
+    endCombine();
     let res; try { res = await call({action:'close'}); } catch(e){ toast('Could not close — check connection','bad'); return; }
-    if(res && res.ok){ board = res.board; if(combining){combining=false;combineAnchored=false;updateCombineUI();} render(); toast('Car riders closed — board cleared for tomorrow', 'good'); }
+    if(res && res.ok){ board = res.board; render(); toast('Car riders closed — board cleared for tomorrow', 'good'); }
     else toast('Could not close — check connection', 'bad');
   }
   async function refresh(){
