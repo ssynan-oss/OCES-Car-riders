@@ -62,7 +62,7 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v8</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v9</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
@@ -84,7 +84,7 @@
   <button class="advance" id="advBtn" onclick="advance()">Wave loaded &amp; gone — Advance Row A ▶</button>
   <div class="qlist" id="qlist"></div>
   <div class="endday"><button class="closeday" onclick="closeDay()">Car Riders Closed — end the day</button><div class="endhint">Clears both rows and resets to Wave 1 for tomorrow. Asks first.</div></div>
-  <div id="dbg">v8 · ready — tap Start camera scan</div>
+  <div id="dbg">v9 · ready — tap Start camera scan</div>
 <script>
   const API='https://script.google.com/macros/s/AKfycbx4S-v420NLWK2-5EYQaxs9-zCzOJpCqA_j4mttcdzCLK7-ePCgUdml5zbLgBGb79XhWg/exec';
   const KEY='oces-2026-2027';
@@ -95,7 +95,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v8 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v9 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -133,7 +133,9 @@
     }catch(e){} }
   }
 
-  async function call(params){ const u=new URL(API);u.searchParams.set('key',KEY);for(const k in params)u.searchParams.set(k,params[k]);u.searchParams.set('t',Date.now());const r=await fetch(u.toString());return await r.json(); }
+  async function call(params){ const u=new URL(API);u.searchParams.set('key',KEY);for(const k in params)u.searchParams.set(k,params[k]);u.searchParams.set('t',Date.now());
+    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
+    try{ const r=await fetch(u.toString(),{signal:ctl.signal}); return await r.json(); } finally{ clearTimeout(to); } }
 
   function setRow(r){ row=r; document.getElementById('rowA').className=r==='A'?'on':''; document.getElementById('rowB').className=r==='B'?'on':''; document.getElementById('advBtn').innerHTML='Wave loaded &amp; gone — Advance Row '+r+' ▶'; disarm(); showReady(); refresh(); }
   function setConfirm(kind,icon,main,sub,showSame){ if(clearTimer){clearTimeout(clearTimer);clearTimer=null;} const c=document.getElementById('confirm'); c.className='confirm '+kind; c.style.animation='none';void c.offsetWidth;c.style.animation='cpulse .45s ease'; document.getElementById('cicon').innerHTML=icon; document.getElementById('cmain').textContent=main; document.getElementById('csub').textContent=sub||''; document.getElementById('csame').style.display=showSame?'block':'none'; }
@@ -161,16 +163,20 @@
   function addById(){ unlockAudio(); const el=document.getElementById('idInput');const v=el.value.trim();if(!v)return; place('scan','familyId',v,v,false); el.value=''; }
   function addManual(){ unlockAudio(); const el=document.getElementById('nameInput');const v=el.value.trim();if(!v)return; place('manual','name',v,v,false); el.value=''; }
   async function advance(){
-    if(advancing) return;                                   // ignore extra taps while one is processing
+    if(advancing) return;
     if((board[row].queue||[]).length===0) return;
     advancing=true; unlockAudio(); disarm();
     const btn=document.getElementById('advBtn'); btn.disabled=true; btn.innerHTML='Advancing Row '+row+'\u2026';
-    setConfirm('armed','&#8635;','Advancing Row '+row+'\u2026','Loading the next wave',false);   // instant "tap registered"
-    let res;
-    try{ res=await call({action:'advance',row}); }
-    catch(e){ dbg('advance NETWORK ERROR'); feedback(false); setConfirm('err','&#33;','No connection','Try again',false); }
-    if(res&&res.ok){ board=res.board; render(); feedback(true); setConfirm('ok','&#10003;','Row '+row+' advanced','Next wave is up',false); autoReady(2500); dbg('advanced Row '+row); }
-    setTimeout(()=>{ advancing=false; const b=document.getElementById('advBtn'); b.innerHTML='Wave loaded &amp; gone — Advance Row '+row+' \u25B6'; b.disabled=(board[row].queue||[]).length===0; }, 900);
+    setConfirm('armed','&#8635;','Advancing Row '+row+'\u2026','Loading the next wave',false);
+    try{
+      const res=await call({action:'advance',row});
+      if(res&&res.ok){ board=res.board; render(); feedback(true); setConfirm('ok','&#10003;','Row '+row+' advanced','Next wave is up',false); autoReady(2500); dbg('advanced Row '+row); }
+      else { feedback(false); setConfirm('err','&#33;','Advance didn\u2019t take','Tap Advance to try again',false); dbg('advance no-ok'); }
+    }catch(e){
+      feedback(false); setConfirm('err','&#33;','No response — try again','Check the Wi-Fi, then tap Advance',false); dbg('advance timeout/error');
+    }finally{
+      advancing=false; const b=document.getElementById('advBtn'); b.innerHTML='Wave loaded &amp; gone — Advance Row '+row+' \u25B6'; b.disabled=(board[row].queue||[]).length===0;
+    }
   }
   async function removeCar(id){ let res;try{res=await call({action:'remove',id});}catch(e){return;} if(res&&res.ok){board=res.board;render();} }
   async function closeDay(){ unlockAudio(); if(!confirm('End car rider for today?\n\nThis clears both rows and resets to Wave 1 for tomorrow.'))return; disarm(); let res;try{res=await call({action:'close'});}catch(e){feedback(false);setConfirm('err','&#33;','No connection','Try again',false);return;} if(res&&res.ok){board=res.board;render();feedback(true);setConfirm('ok','&#10003;','Car riders closed','Board cleared for tomorrow',false);autoReady(4000);} }
