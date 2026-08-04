@@ -144,7 +144,14 @@
   function unlockAudio(){ try{ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){} }
   document.addEventListener('touchstart', unlockAudio, {passive:true});
   document.addEventListener('mousedown', unlockAudio);
+  let flashEl=null;
+  function ensureFlash(){ if(!flashEl){ flashEl=document.createElement('div'); flashEl.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:200;opacity:0'; document.body.appendChild(flashEl);} return flashEl; }
   function beep(ok){
+    const f=ensureFlash();
+    f.style.background = ok?'rgba(47,158,87,.45)':'rgba(192,57,43,.45)';
+    f.style.transition='none'; f.style.opacity='1'; void f.offsetWidth;
+    f.style.transition='opacity .5s ease'; f.style.opacity='0';
+    try{ if(navigator.vibrate) navigator.vibrate(ok?60:[50,40,50]); }catch(e){}
     if(!actx) return;
     try{
       const o=actx.createOscillator(), g=actx.createGain(); o.connect(g); g.connect(actx.destination);
