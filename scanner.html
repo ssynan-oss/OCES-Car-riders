@@ -12,48 +12,57 @@
   :root{
     --paper:#f6f1e7; --ink:#16233b; --ink-soft:#516079;
     --cone:#e8721c; --cone-deep:#c25908; --line:#d8cfbd; --card:#fffdf8;
-    --deck-ink:#28406e; --good:#2f9e57; --bad:#c0392b;
-    --combine:#7a2fb0; --combine-deep:#5a1f86;
+    --deck-ink:#28406e; --good:#2f9e57; --good-deep:#1f7a44; --bad:#c0392b; --bad-deep:#8e2a20;
+    --arm:#7a2fb0; --arm-deep:#5a1f86;
     --shadow:0 2px 0 #e3dac8, 0 10px 26px -14px rgba(22,35,59,.35);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{font-family:'Libre Franklin',system-ui,sans-serif;background:var(--paper);color:var(--ink);
-    padding:14px 14px 28px;max-width:680px;margin:0 auto}
-  header{display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:14px}
-  .cone-mark{width:34px;height:34px;flex:0 0 auto;position:relative}
+    padding:12px 14px 28px;max-width:680px;margin:0 auto}
+  header{display:flex;align-items:center;gap:10px;border-bottom:3px solid var(--ink);padding-bottom:9px;margin-bottom:12px}
+  .cone-mark{width:32px;height:32px;flex:0 0 auto;position:relative}
   .cone-mark::before{content:"";position:absolute;inset:auto 5px 3px 5px;height:5px;border-radius:3px;background:var(--cone-deep)}
   .cone-mark::after{content:"";position:absolute;left:50%;bottom:7px;transform:translateX(-50%);
-    width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:24px solid var(--cone)}
-  h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;letter-spacing:-.01em}
+    width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:23px solid var(--cone)}
+  h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:21px;letter-spacing:-.01em}
   .sub{color:var(--ink-soft);font-size:12px;font-weight:600}
   .label{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin:6px 0}
   .rowpick{display:flex;gap:10px;margin-bottom:12px}
   .rowpick button{flex:1;font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;border:2px solid var(--line);
-    background:var(--card);color:var(--ink-soft);border-radius:14px;padding:16px;cursor:pointer;transition:.12s}
+    background:var(--card);color:var(--ink-soft);border-radius:14px;padding:15px;cursor:pointer;transition:.12s}
   .rowpick button.on{background:var(--cone);color:#fff;border-color:var(--cone-deep);box-shadow:0 3px 0 var(--cone-deep)}
+
+  /* BIG confirmation banner — the primary feedback */
+  .confirm{display:flex;align-items:center;gap:14px;border-radius:16px;padding:16px 16px;margin-bottom:12px;
+    min-height:88px;border:2px solid var(--line);background:var(--card);transition:background .1s}
+  .confirm .cicon{flex:0 0 auto;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
+    font-family:'Bricolage Grotesque';font-weight:800;font-size:30px;background:#efe7d6;color:var(--ink-soft)}
+  .confirm .cbody{flex:1;min-width:0}
+  .confirm .cmain{font-family:'Bricolage Grotesque';font-weight:800;font-size:22px;line-height:1.1}
+  .confirm .csub{font-size:13px;font-weight:600;margin-top:2px;opacity:.85}
+  .confirm .csame{flex:0 0 auto;font-family:'Bricolage Grotesque';font-weight:800;font-size:14px;border:none;
+    border-radius:11px;padding:12px 13px;cursor:pointer;background:var(--arm);color:#fff;box-shadow:0 3px 0 var(--arm-deep);line-height:1.15}
+  .confirm.ok{background:#e9f7ee;border-color:var(--good)} .confirm.ok .cicon{background:var(--good);color:#fff}
+  .confirm.ok .cmain{color:var(--good-deep)}
+  .confirm.err{background:#fbeceb;border-color:var(--bad)} .confirm.err .cicon{background:var(--bad);color:#fff}
+  .confirm.err .cmain{color:var(--bad-deep)}
+  .confirm.armed{background:#f3ebfa;border-color:var(--arm)} .confirm.armed .cicon{background:var(--arm);color:#fff}
+  .confirm.armed .cmain{color:var(--arm-deep)}
+
   .scanbtn{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;border:none;border-radius:14px;
-    padding:18px;cursor:pointer;background:var(--ink);color:var(--paper);box-shadow:0 3px 0 #0c1626;margin-bottom:8px}
-  .scanbtn.live{background:var(--bad);box-shadow:0 3px 0 #8e2a20}
+    padding:17px;cursor:pointer;background:var(--ink);color:var(--paper);box-shadow:0 3px 0 #0c1626;margin-bottom:8px}
+  .scanbtn.live{background:var(--bad);box-shadow:0 3px 0 var(--bad-deep)}
   #reader{width:100%;border-radius:14px;overflow:hidden;margin-bottom:10px;display:none}
   #reader.show{display:block}
-  .combinebtn{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:2px solid var(--combine);
-    border-radius:14px;padding:14px;cursor:pointer;background:#fff;color:var(--combine);margin-bottom:8px;transition:.12s}
-  .combinebtn.on{background:var(--combine);color:#fff;border-color:var(--combine-deep);box-shadow:0 3px 0 var(--combine-deep)}
-  .banner{display:none;background:var(--combine);color:#fff;border-radius:12px;padding:11px 13px;margin-bottom:10px;
-    font-weight:700;font-size:14px;line-height:1.3}
-  .banner.show{display:block}
-  .banner b{font-family:'Bricolage Grotesque';font-weight:800}
   .manual{display:flex;gap:8px;margin-bottom:8px}
-  .manual input{flex:1;font-family:inherit;font-size:17px;border:2px solid var(--line);border-radius:12px;padding:13px;background:var(--card);color:var(--ink)}
+  .manual input{flex:1;font-family:inherit;font-size:17px;border:2px solid var(--line);border-radius:12px;padding:12px;background:var(--card);color:var(--ink)}
   .manual input:focus{outline:none;border-color:var(--cone)}
   .manual button{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:0 16px;cursor:pointer;background:#efe7d6;color:var(--ink)}
   .manual button:active{transform:translateY(1px)}
-  .toast{min-height:24px;font-weight:700;font-size:15px;margin:6px 0 14px;padding:0 2px}
-  .toast.good{color:var(--good)} .toast.bad{color:var(--bad)} .toast.combine{color:var(--combine)}
-  .qhead{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+  .qhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px}
   .qhead .row-meta{font-family:'Bricolage Grotesque';font-weight:700;font-size:13px;color:#fff;background:var(--ink);padding:3px 10px;border-radius:999px}
   .advance{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:none;border-radius:13px;
-    padding:15px;cursor:pointer;background:var(--deck-ink);color:#fff;box-shadow:0 3px 0 #1b2c4d;margin:4px 0 14px}
+    padding:14px;cursor:pointer;background:var(--deck-ink);color:#fff;box-shadow:0 3px 0 #1b2c4d;margin:2px 0 12px}
   .advance:disabled{background:#c3cee3;box-shadow:none;cursor:not-allowed}
   .qlist{display:flex;flex-direction:column;gap:6px}
   .qitem{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:9px 11px}
@@ -61,15 +70,14 @@
     font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;background:var(--cone);color:#fff}
   .qitem.deck .pos{background:#efe7d6;color:var(--ink-soft)}
   .qitem .nm{flex:1;font-weight:700;font-size:15px}
-  .qitem .cnt{font-size:11px;font-weight:800;color:var(--combine);margin-left:6px}
-  .qitem .x{flex:0 0 auto;width:34px;height:34px;border-radius:8px;border:none;background:#f3ece0;color:var(--ink-soft);
-    font-size:18px;font-weight:800;cursor:pointer}
+  .qitem .cnt{font-size:11px;font-weight:800;color:var(--arm);margin-left:6px}
+  .qitem .x{flex:0 0 auto;width:34px;height:34px;border-radius:8px;border:none;background:#f3ece0;color:var(--ink-soft);font-size:18px;font-weight:800;cursor:pointer}
   .qitem .x:active{background:#e7dcc9}
   .qempty{color:var(--ink-soft);font-style:italic;font-size:14px;padding:8px 2px}
   .divider{font-size:11px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin:10px 0 4px}
-  .endday{margin-top:26px;border-top:2px dashed var(--line);padding-top:16px}
+  .endday{margin-top:22px;border-top:2px dashed var(--line);padding-top:14px}
   .closeday{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:2px solid var(--bad);
-    border-radius:13px;padding:15px;cursor:pointer;background:#fff;color:var(--bad);transition:.12s}
+    border-radius:13px;padding:14px;cursor:pointer;background:#fff;color:var(--bad)}
   .closeday:active{background:var(--bad);color:#fff}
   .endhint{font-size:12px;color:var(--ink-soft);text-align:center;margin-top:8px}
 </style>
@@ -77,7 +85,7 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan down the lane &middot; tap a name to pull a car out</div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; the banner &amp; beep confirm each one</div></div>
   </header>
 
   <div class="label">Scanning into</div>
@@ -86,27 +94,25 @@
     <button id="rowB" onclick="setRow('B')">Row B</button>
   </div>
 
+  <div class="confirm ready" id="confirm">
+    <div class="cicon" id="cicon">&#8250;</div>
+    <div class="cbody"><div class="cmain" id="cmain">Ready to scan</div><div class="csub" id="csub">Point the camera at a car's tag, or type below</div></div>
+    <button class="csame" id="csame" style="display:none" onclick="armSame()">&#43; Same<br>car</button>
+  </div>
+
   <button class="scanbtn" id="scanBtn" onclick="toggleScan()">📷 Start camera scan</button>
   <div id="reader"></div>
 
-  <button class="combinebtn" id="combineBtn" onclick="toggleCombine()">👥 Same car — combine tags</button>
-  <div class="banner" id="banner"><b>SAME CAR MODE.</b> Every tag you add now joins ONE car / one cone. Tap "Done" when this car is complete.</div>
-
   <div class="label">No tag? Type the student's name</div>
   <div class="manual">
-    <input id="nameInput" type="text" placeholder="e.g. Sam Carter" autocomplete="off"
-      onkeydown="if(event.key==='Enter')addManual()">
+    <input id="nameInput" type="text" placeholder="e.g. Sam Carter" autocomplete="off" onkeydown="if(event.key==='Enter')addManual()">
     <button onclick="addManual()">Add</button>
   </div>
-
   <div class="label">Or enter a tag number</div>
   <div class="manual">
-    <input id="idInput" type="text" inputmode="numeric" placeholder="e.g. 1042" autocomplete="off"
-      onkeydown="if(event.key==='Enter')addById()">
+    <input id="idInput" type="text" inputmode="numeric" placeholder="e.g. 1042" autocomplete="off" onkeydown="if(event.key==='Enter')addById()">
     <button onclick="addById()">Add</button>
   </div>
-
-  <div class="toast" id="toast"></div>
 
   <div class="qhead">
     <div class="label" style="margin:0">In this row now</div>
@@ -121,153 +127,154 @@
   </div>
 
 <script>
-  // ============================================================
-  //  CONFIG — your live backend. Edit only if you redeploy or
-  //  rotate the key.
-  // ============================================================
   const API = 'https://script.google.com/macros/s/AKfycbx4S-v420NLWK2-5EYQaxs9-zCzOJpCqA_j4mttcdzCLK7-ePCgUdml5zbLgBGb79XhWg/exec';
   const KEY = 'oces-2026-2027';
-  // ============================================================
 
   const SIZE = 10;
   let row = 'A';
   let board = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
   let scanner = null, scanning = false;
   let lastCode = '', lastCodeAt = 0;
-  let combining = false;   // when ON, every add joins the current car (one cone)
+  let armSameCar = false;   // one-shot: next add joins the current car
+  let clearTimer = null;
+
+  // ---- sound: unlock on first touch, beep on each result ----
+  let actx = null;
+  function unlockAudio(){ try{ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){} }
+  document.addEventListener('touchstart', unlockAudio, {passive:true});
+  document.addEventListener('mousedown', unlockAudio);
+  function beep(ok){
+    if(!actx) return;
+    try{
+      const o=actx.createOscillator(), g=actx.createGain(); o.connect(g); g.connect(actx.destination);
+      o.type='sine'; o.frequency.value = ok?880:210;
+      const t=actx.currentTime, dur=ok?0.12:0.26;
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.35,t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+      o.start(t); o.stop(t+dur+0.02);
+      if(ok){ const o2=actx.createOscillator(),g2=actx.createGain(); o2.connect(g2);g2.connect(actx.destination);
+        o2.type='sine'; o2.frequency.value=1180; g2.gain.setValueAtTime(0.0001,t+0.08);
+        g2.gain.exponentialRampToValueAtTime(0.25,t+0.09); g2.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
+        o2.start(t+0.08); o2.stop(t+0.22); }
+    }catch(e){}
+  }
 
   async function call(params){
-    const u = new URL(API);
-    u.searchParams.set('key', KEY);
+    const u=new URL(API); u.searchParams.set('key',KEY);
     for(const k in params) u.searchParams.set(k, params[k]);
     u.searchParams.set('t', Date.now());
-    const r = await fetch(u.toString());
-    return await r.json();
+    const r=await fetch(u.toString()); return await r.json();
   }
 
   function setRow(r){
-    row = r;
+    row=r;
     document.getElementById('rowA').className = r==='A'?'on':'';
     document.getElementById('rowB').className = r==='B'?'on':'';
     document.getElementById('advBtn').innerHTML = 'Wave loaded &amp; gone — Advance Row '+r+' ▶';
-    endCombine();
-    refresh();
+    disarm(); showReady(); refresh();
   }
 
-  function toast(msg, kind){
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.className = 'toast ' + (kind || 'good');
-    if(kind !== 'bad'){ clearTimeout(t._h); t._h = setTimeout(()=>{ t.textContent=''; t.className='toast'; }, 4000); }
+  // ---- the confirmation banner ----
+  function setConfirm(kind, icon, main, sub, showSame){
+    if(clearTimer){ clearTimeout(clearTimer); clearTimer=null; }
+    const c=document.getElementById('confirm');
+    c.className='confirm '+kind;
+    document.getElementById('cicon').innerHTML=icon;
+    document.getElementById('cmain').textContent=main;
+    document.getElementById('csub').textContent=sub||'';
+    document.getElementById('csame').style.display = showSame?'block':'none';
   }
+  function showReady(){ setConfirm('ready','&#8250;','Ready to scan','Point the camera at a car\u2019s tag, or type below', false); }
+  function autoReady(ms){ if(clearTimer) clearTimeout(clearTimer); clearTimer=setTimeout(()=>{ if(!armSameCar) showReady(); }, ms||3500); }
 
-  function toggleCombine(){
-    combining = !combining;
-    updateCombineUI();
-    toast(combining ? 'Same-car mode ON — add all tags for one car' : 'Same-car mode off', 'combine');
+  function armSame(){
+    armSameCar = true;
+    const q=board[row].queue, car=q[q.length-1];
+    setConfirm('armed','&#43;','Add the next tag to THIS car', (car?car.names.join(', '):'')+'  —  scan or type the second tag', false);
   }
-  function endCombine(){ if(combining){ combining = false; updateCombineUI(); } }
-  function updateCombineUI(){
-    document.getElementById('combineBtn').className = 'combinebtn' + (combining?' on':'');
-    document.getElementById('combineBtn').textContent = combining ? '✓ Done — that\u2019s one car' : '👥 Same car — combine tags';
-    document.getElementById('banner').className = 'banner' + (combining?' show':'');
-  }
+  function disarm(){ armSameCar=false; }
 
-  // When same-car mode is ON, every add attaches to the current car (one cone).
+  // unified add — every add is a new car unless same-car was just armed
   async function place(action, field, value, code){
-    const attach = combining;
-    const params = { action, row };
-    params[field] = value;
-    if(attach) params.same = 1;
+    const attach = armSameCar; armSameCar=false;
+    const params={action,row}; params[field]=value; if(attach) params.same=1;
     let res;
-    try { res = await call(params); } catch(e){ toast('Could not add — check connection', 'bad'); return; }
+    try{ res=await call(params); }
+    catch(e){ beep(false); setConfirm('err','&#33;','No connection','Try again',false); return; }
 
     if(res && res.ok){
-      board = res.board; render();
-      const q = board[row].queue; const car = q[q.length-1];
-      const n = car ? car.names.length : 0;
-      if(attach) toast('✓ combined — this car now has '+n+' in it', 'combine');
-      else toast('✓ '+(car?car.names.join(', '):'car')+' → Row '+row, 'good');
-    } else if(res && res.error === 'unknown tag'){
-      toast('Tag '+code+' not in roster — type the name instead', 'bad');
-    } else { toast('Could not add — check connection', 'bad'); }
+      board=res.board; render();
+      const q=board[row].queue, car=q[q.length-1];
+      const names = car?car.names.join(', '):'car';
+      beep(true);
+      if(attach) setConfirm('ok','&#10003;','Added to same car', 'This car now: '+names+'  ('+(car?car.names.length:'?')+')', true);
+      else        setConfirm('ok','&#10003;', names, 'Scanned into Row '+row+'  \u2022  tap \u201cSame car\u201d only if this car has another tag', true);
+      autoReady();
+    } else if(res && res.error==='unknown tag'){
+      beep(false); setConfirm('err','&#33;','Tag '+code+' not in roster','Type the student\u2019s name in the box below', false); 
+    } else { beep(false); setConfirm('err','&#33;','Couldn\u2019t add','Check the connection and try again', false); }
   }
 
-  function addById(){
-    const el = document.getElementById('idInput'); const v = el.value.trim(); if(!v) return;
-    place('scan','familyId',v,v); el.value='';
-  }
-  function addManual(){
-    const el = document.getElementById('nameInput'); const v = el.value.trim(); if(!v) return;
-    place('manual','name',v,v); el.value='';
-  }
+  function addById(){ unlockAudio(); const el=document.getElementById('idInput'); const v=el.value.trim(); if(!v)return; place('scan','familyId',v,v); el.value=''; }
+  function addManual(){ unlockAudio(); const el=document.getElementById('nameInput'); const v=el.value.trim(); if(!v)return; place('manual','name',v,v); el.value=''; }
 
   async function advance(){
-    endCombine();
-    let res; try { res = await call({action:'advance', row:row}); } catch(e){ toast('Could not advance — check connection','bad'); return; }
-    if(res && res.ok){ board = res.board; render(); toast('Row '+row+' advanced — next wave up', 'good'); }
-    else toast('Could not advance — check connection', 'bad');
+    unlockAudio(); disarm();
+    let res; try{ res=await call({action:'advance',row}); }catch(e){ beep(false); setConfirm('err','&#33;','No connection','Try again',false); return; }
+    if(res&&res.ok){ board=res.board; render(); beep(true); setConfirm('ok','&#10003;','Row '+row+' advanced','Next wave is up',false); autoReady(2500); }
   }
   async function removeCar(id){
-    let res; try { res = await call({action:'remove', id:id}); } catch(e){ toast('Could not remove — check connection','bad'); return; }
-    if(res && res.ok){ board = res.board; render(); toast('Car removed', 'good'); }
-    else toast('Could not remove — check connection', 'bad');
+    let res; try{ res=await call({action:'remove',id}); }catch(e){ return; }
+    if(res&&res.ok){ board=res.board; render(); }
   }
   async function closeDay(){
+    unlockAudio();
     if(!confirm('End car rider for today?\n\nThis clears both rows and resets to Wave 1 for tomorrow.')) return;
-    endCombine();
-    let res; try { res = await call({action:'close'}); } catch(e){ toast('Could not close — check connection','bad'); return; }
-    if(res && res.ok){ board = res.board; render(); toast('Car riders closed — board cleared for tomorrow', 'good'); }
-    else toast('Could not close — check connection', 'bad');
+    disarm();
+    let res; try{ res=await call({action:'close'}); }catch(e){ beep(false); setConfirm('err','&#33;','No connection','Try again',false); return; }
+    if(res&&res.ok){ board=res.board; render(); beep(true); setConfirm('ok','&#10003;','Car riders closed','Board cleared for tomorrow',false); autoReady(4000); }
   }
-  async function refresh(){
-    try{ const data = await call({action:'board'}); if(data && data.A){ board = data; render(); } }catch(e){}
-  }
+  async function refresh(){ try{ const d=await call({action:'board'}); if(d&&d.A){ board=d; render(); } }catch(e){} }
 
   function render(){
-    const q = board[row].queue || [];
-    document.getElementById('rowMeta').textContent =
-      'Wave '+board[row].wave + (q.length>SIZE ? ' · '+Math.ceil(q.length/SIZE)+' staged' : '');
-    document.getElementById('advBtn').disabled = q.length===0;
-    const list = document.getElementById('qlist'); list.innerHTML='';
+    const q=board[row].queue||[];
+    document.getElementById('rowMeta').textContent='Wave '+board[row].wave + (q.length>SIZE?' · '+Math.ceil(q.length/SIZE)+' staged':'');
+    document.getElementById('advBtn').disabled=q.length===0;
+    const list=document.getElementById('qlist'); list.innerHTML='';
     if(q.length===0){ list.innerHTML='<div class="qempty">Nothing scanned into Row '+row+' yet.</div>'; return; }
     q.forEach((c,i)=>{
-      if(i===SIZE){ const d=document.createElement('div'); d.className='divider'; d.textContent='— on deck / further back —'; list.appendChild(d); }
-      const item = document.createElement('div');
-      item.className = 'qitem' + (i>=SIZE?' deck':'');
-      const multi = c.names.length>1 ? '<span class="cnt">'+c.names.length+' in car</span>' : '';
-      item.innerHTML = '<div class="pos">'+(i<SIZE?(i+1):'•')+'</div>'+
-        '<div class="nm">'+esc(c.names.join(', '))+multi+'</div>'+
+      if(i===SIZE){ const dv=document.createElement('div'); dv.className='divider'; dv.textContent='— on deck / further back —'; list.appendChild(dv); }
+      const it=document.createElement('div'); it.className='qitem'+(i>=SIZE?' deck':'');
+      const multi=c.names.length>1?'<span class="cnt">'+c.names.length+' in car</span>':'';
+      it.innerHTML='<div class="pos">'+(i<SIZE?(i+1):'•')+'</div><div class="nm">'+esc(c.names.join(', '))+multi+'</div>'+
         '<button class="x" title="pull this car out" onclick="removeCar(\''+c.id+'\')">×</button>';
-      list.appendChild(item);
+      list.appendChild(it);
     });
   }
 
   function toggleScan(){
+    unlockAudio();
     if(scanning){ stopScan(); return; }
-    if(typeof Html5Qrcode === 'undefined'){ toast('Scanner library still loading — try again in a second', 'bad'); return; }
-    const reader = document.getElementById('reader'); reader.classList.add('show');
-    scanner = new Html5Qrcode('reader');
-    scanner.start({ facingMode:'environment' }, { fps:10, qrbox:{width:240,height:240} },
-      onDecode, ()=>{}).then(()=>{
-        scanning = true;
-        const b = document.getElementById('scanBtn'); b.textContent='■ Stop camera'; b.classList.add('live');
-      }).catch(err=>{ toast('Camera unavailable: '+err, 'bad'); reader.classList.remove('show'); });
+    if(typeof Html5Qrcode==='undefined'){ setConfirm('err','&#33;','Scanner still loading','Try again in a second',false); return; }
+    const reader=document.getElementById('reader'); reader.classList.add('show');
+    scanner=new Html5Qrcode('reader');
+    scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}}, onDecode, ()=>{})
+      .then(()=>{ scanning=true; const b=document.getElementById('scanBtn'); b.textContent='■ Stop camera'; b.classList.add('live'); })
+      .catch(err=>{ setConfirm('err','&#33;','Camera unavailable',String(err),false); reader.classList.remove('show'); });
   }
   function stopScan(){
     if(scanner){ scanner.stop().then(()=>scanner.clear()).catch(()=>{}); }
-    scanning = false;
-    document.getElementById('reader').classList.remove('show');
-    const b = document.getElementById('scanBtn'); b.textContent='📷 Start camera scan'; b.classList.remove('live');
+    scanning=false; document.getElementById('reader').classList.remove('show');
+    const b=document.getElementById('scanBtn'); b.textContent='📷 Start camera scan'; b.classList.remove('live');
   }
   function onDecode(text){
-    const now = Date.now();
-    if(text === lastCode && now - lastCodeAt < 3000) return;
-    lastCode = text; lastCodeAt = now;
+    const now=Date.now();
+    if(text===lastCode && now-lastCodeAt<3000) return;
+    lastCode=text; lastCodeAt=now;
     place('scan','familyId',String(text).trim(),text);
   }
 
-  setRow('A');
-  updateCombineUI();
+  setRow('A'); showReady();
   setInterval(refresh, 5000);
 </script>
 </body>
