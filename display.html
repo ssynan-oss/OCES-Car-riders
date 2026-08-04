@@ -179,7 +179,8 @@
       const r = rows[row], q = r.queue||[];
       const cones = q.slice(0,SIZE), deck = q.slice(SIZE,SIZE*2), buf = q.slice(SIZE*2);
       const waves = Math.ceil(q.length/SIZE);
-      document.getElementById('meta'+row).textContent = 'Wave '+r.wave + (waves>1?' · '+waves+' staged':'');
+      const wt = rows.waveStart ? ' · since '+new Date(rows.waveStart).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+      document.getElementById('meta'+row).textContent = 'Wave '+r.wave + wt + (waves>1?' · '+waves+' staged':'');
       const wrap = document.getElementById('cones'+row); wrap.innerHTML='';
       for(let i=0;i<SIZE;i++){
         const c=cones[i]; const div=document.createElement('div');
