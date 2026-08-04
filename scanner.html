@@ -33,8 +33,9 @@
   .rowpick button.on{background:var(--cone);color:#fff;border-color:var(--cone-deep);box-shadow:0 3px 0 var(--cone-deep)}
 
   /* BIG confirmation banner — the primary feedback */
-  .confirm{display:flex;align-items:center;gap:14px;border-radius:16px;padding:16px 16px;margin-bottom:12px;
-    min-height:88px;border:2px solid var(--line);background:var(--card);transition:background .1s}
+  @keyframes cpulse{0%{transform:scale(.99)}45%{transform:scale(1.02)}100%{transform:scale(1)}}
+  .confirm{position:sticky;top:6px;z-index:30;display:flex;align-items:center;gap:14px;border-radius:16px;padding:16px 16px;margin-bottom:12px;
+    min-height:88px;border:2px solid var(--line);background:var(--card);transition:background .1s;box-shadow:0 6px 18px -12px rgba(22,35,59,.45)}
   .confirm .cicon{flex:0 0 auto;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
     font-family:'Bricolage Grotesque';font-weight:800;font-size:30px;background:#efe7d6;color:var(--ink-soft)}
   .confirm .cbody{flex:1;min-width:0}
@@ -134,7 +135,7 @@
   let row = 'A';
   let board = { A:{wave:1,queue:[]}, B:{wave:1,queue:[]} };
   let scanner = null, scanning = false;
-  let lastCode = '', lastCodeAt = 0;
+  let heldCode = null; const recentAdd = {};
   let armSameCar = false;   // one-shot: next add joins the current car
   let clearTimer = null;
 
@@ -179,6 +180,7 @@
     if(clearTimer){ clearTimeout(clearTimer); clearTimer=null; }
     const c=document.getElementById('confirm');
     c.className='confirm '+kind;
+    c.style.animation='none'; void c.offsetWidth; c.style.animation='cpulse .45s ease';
     document.getElementById('cicon').innerHTML=icon;
     document.getElementById('cmain').textContent=main;
     document.getElementById('csub').textContent=sub||'';
@@ -267,11 +269,13 @@
     scanning=false; document.getElementById('reader').classList.remove('show');
     const b=document.getElementById('scanBtn'); b.textContent='📷 Start camera scan'; b.classList.remove('live');
   }
-  function onDecode(text){
+  function onDecode(raw){
+    const text=String(raw).trim();
+    if(text===heldCode) return;                                      // same tag still in front of the camera
     const now=Date.now();
-    if(text===lastCode && now-lastCodeAt<3000) return;
-    lastCode=text; lastCodeAt=now;
-    place('scan','familyId',String(text).trim(),text);
+    if(recentAdd[text] && now-recentAdd[text]<4000){ heldCode=text; return; }  // just scanned this one moments ago
+    heldCode=text; recentAdd[text]=now;
+    place('scan','familyId',text,text);
   }
 
   setRow('A'); showReady();
