@@ -19,6 +19,20 @@
   h1{font-family:'Bricolage Grotesque';font-weight:800;font-size:21px;letter-spacing:-.01em}
   .sub{color:var(--ink-soft);font-size:12px;font-weight:600}
   .label{font-size:12px;font-weight:800;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em;margin:6px 0}
+  /* v11 verify modal */
+  .vwrap{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(22,35,59,.55);padding:18px}
+  .vwrap.show{display:flex}
+  .vcard{width:100%;max-width:560px;background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:22px;box-shadow:0 18px 50px -18px rgba(22,35,59,.7);animation:cpulse .3s ease}
+  .vtag{font-size:13px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+  .vnames{font-family:'Bricolage Grotesque';font-weight:800;font-size:34px;line-height:1.12;margin:8px 0 4px;word-break:break-word}
+  .vsub{font-size:15px;font-weight:600;color:var(--ink-soft);margin-bottom:16px}
+  .vbtns{display:flex;flex-direction:column;gap:10px}
+  .vbtns button{font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;border:none;border-radius:14px;padding:16px;cursor:pointer;color:#fff}
+  .vok{background:var(--good);box-shadow:0 4px 0 var(--good-deep)}
+  .vsame{background:var(--arm);box-shadow:0 4px 0 var(--arm-deep)}
+  .vbad{background:var(--bad);box-shadow:0 4px 0 var(--bad-deep)}
+  .vtoggle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--ink-soft);margin:-4px 0 10px;user-select:none}
+  .vtoggle input{width:20px;height:20px;accent-color:var(--cone)}
   .rowpick{display:flex;gap:10px;margin-bottom:12px}
   .rowpick button{flex:1;font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;border:2px solid var(--line);background:var(--card);color:var(--ink-soft);border-radius:14px;padding:15px;cursor:pointer}
   .rowpick button.on{background:var(--cone);color:#fff;border-color:var(--cone-deep);box-shadow:0 3px 0 var(--cone-deep)}
@@ -62,13 +76,14 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v10</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v11</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
     <button id="rowA" class="on" onclick="setRow('A')">Row A</button>
     <button id="rowB" onclick="setRow('B')">Row B</button>
   </div>
+  <label class="vtoggle"><input type="checkbox" id="verifyChk" checked onchange="setVerifyMode(this.checked)"> Verify each scan (show name popup)</label>
   <div class="confirm ready" id="confirm">
     <div class="cicon" id="cicon">&#8250;</div>
     <div class="cbody"><div class="cmain" id="cmain">Ready to scan</div><div class="csub" id="csub">Point the camera at a car's tag, or type below</div></div>
@@ -95,7 +110,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v10 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v11 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -144,6 +159,21 @@
   function armSame(){ armSameCar=true; const q=board[row].queue,car=q[q.length-1]; setConfirm('armed','&#43;','Add the next tag to THIS car',(car?car.names.join(', '):'')+'  —  scan or type the second tag',false); }
   function disarm(){ armSameCar=false; }
 
+  let verifying=false, verifyOn=true, verifyCar=null;
+  function setVerifyMode(on){ verifyOn=on; try{localStorage.setItem('verifyMode',on?'1':'0');}catch(e){} if(!on){closeVerify();} }
+  (function(){ try{ const s=localStorage.getItem('verifyMode'); if(s!==null){ verifyOn=(s==='1'); } }catch(e){}
+     document.addEventListener('DOMContentLoaded',()=>{ const c=document.getElementById('verifyChk'); if(c) c.checked=verifyOn; }); })();
+  function openVerify(car,attach){ verifying=true; verifyCar=car;
+    document.getElementById('vtag').textContent=attach?'Added to same car':'Scanned into Row '+row;
+    document.getElementById('vnames').textContent=car.names.join(', ');
+    document.getElementById('vsub').textContent=(car.names.length>1?car.names.length+' students in this car — ':'')+'confirm this matches the tag/car';
+    document.getElementById('vwrap').classList.add('show'); }
+  function closeVerify(){ verifying=false; verifyCar=null; document.getElementById('vwrap').classList.remove('show'); }
+  function verifyOk(){ closeVerify(); setConfirm('ok','&#10003;','Confirmed','Ready for the next car',false); autoReady(1500); }
+  function verifySame(){ const c=verifyCar; closeVerify(); armSame(); }
+  async function verifyRemove(){ const c=verifyCar; closeVerify(); if(!c) return;
+    await removeCar(c.id); feedback(false);
+    setConfirm('err','&#10007;','Removed: '+c.names.join(', '),'Re-scan the correct tag or type the name below',false); autoReady(5000); }
   async function place(action,field,value,code,skipOkBeep){
     const attach=armSameCar; armSameCar=false;
     const params={action,row}; params[field]=value; if(attach) params.same=1;
@@ -154,9 +184,9 @@
       const q=board[row].queue,car=q[q.length-1]; const names=car?car.names.join(', '):'car';
       dbg('added: '+names);
       if(!skipOkBeep) feedback(true);
-      if(attach) setConfirm('ok','&#10003;','Added to same car','This car now: '+names+' ('+(car?car.names.length:'?')+')',true);
-      else setConfirm('ok','&#10003;',names,'Scanned into Row '+row+' \u2022 tap \u201cSame car\u201d only if this car has another tag',true);
-      autoReady();
+      if(verifyOn && car){ openVerify(car,attach); }
+      else if(attach) { setConfirm('ok','&#10003;','Added to same car','This car now: '+names+' ('+(car?car.names.length:'?')+')',true); autoReady(); }
+      else { setConfirm('ok','&#10003;',names,'Scanned into Row '+row+' \u2022 tap \u201cSame car\u201d only if this car has another tag',true); autoReady(); }
     } else if(res && res.error==='unknown tag'){ dbg('UNKNOWN tag '+code); feedback(false); setConfirm('err','&#33;','Tag '+code+' not in roster','Type the student\u2019s name below',false); }
     else { dbg('add failed'); feedback(false); setConfirm('err','&#33;','Couldn\u2019t add','Check connection',false); }
   }
@@ -210,6 +240,7 @@
   }
   function stopScan(){ if(scanner){scanner.stop().then(()=>scanner.clear()).catch(()=>{});} scanning=false; document.getElementById('reader').classList.remove('show'); const b=document.getElementById('scanBtn');b.textContent='Start camera scan';b.classList.remove('live'); }
   function onDecode(raw){
+    if(verifying) return;                          // pause camera adds while verify popup is open
     const text=String(raw).trim();
     if(text===heldCode) return;
     const now=Date.now();
@@ -223,5 +254,17 @@
   setRow('A'); showReady();
   setInterval(refresh,5000);
 </script>
+<div class="vwrap" id="vwrap">
+  <div class="vcard">
+    <div class="vtag" id="vtag">Scanned</div>
+    <div class="vnames" id="vnames"></div>
+    <div class="vsub" id="vsub"></div>
+    <div class="vbtns">
+      <button class="vok" onclick="verifyOk()">&#10003; Correct &mdash; next car</button>
+      <button class="vsame" onclick="verifySame()">&#43; Same car &mdash; add another tag</button>
+      <button class="vbad" onclick="verifyRemove()">&#10007; Wrong &mdash; remove from board</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
