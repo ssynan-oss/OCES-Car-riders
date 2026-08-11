@@ -76,7 +76,7 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v11</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v11.1</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
@@ -110,7 +110,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v11 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v11.1 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -149,7 +149,7 @@
   }
 
   async function call(params){ const u=new URL(API);u.searchParams.set('key',KEY);for(const k in params)u.searchParams.set(k,params[k]);u.searchParams.set('t',Date.now());
-    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),8000);
+    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),15000);  // v11.1: outlast the server's 10s lock wait so a 'failed' action can never secretly succeed
     try{ const r=await fetch(u.toString(),{signal:ctl.signal}); return await r.json(); } finally{ clearTimeout(to); } }
 
   function setRow(r){ row=r; document.getElementById('rowA').className=r==='A'?'on':''; document.getElementById('rowB').className=r==='B'?'on':''; disarm(); showReady(); refresh(); }
