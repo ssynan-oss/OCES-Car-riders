@@ -54,6 +54,20 @@
   .manual input{flex:1;font-family:inherit;font-size:17px;border:2px solid var(--line);border-radius:12px;padding:12px;background:var(--card);color:var(--ink)}
   .manual input:focus{outline:none;border-color:var(--cone)}
   .manual button{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:0 16px;cursor:pointer;background:#efe7d6;color:var(--ink)}
+  /* v12 roster search */
+  .rstat{font-size:12px;font-weight:700;margin:-2px 0 8px;color:var(--ink-soft)}
+  .rstat.ok{color:var(--good-deep)} .rstat.bad{color:var(--bad-deep)}
+  .sres{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;max-height:270px;overflow-y:auto}
+  .sres button{display:flex;align-items:center;gap:9px;text-align:left;font-family:inherit;font-size:16px;font-weight:600;
+    border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:11px;padding:12px 11px;cursor:pointer}
+  .sres button .gr{margin-left:auto;font-size:12px;font-weight:800;color:#fff;background:var(--deck-ink);border-radius:999px;padding:3px 9px}
+  .sres button.sel{background:#e9f7ee;border-color:var(--good)}
+  .sres .none{font-size:14px;color:var(--ink-soft);font-style:italic;padding:6px 2px}
+  .picked{border:2px dashed var(--arm);background:#f7f2fc;border-radius:13px;padding:11px;margin-bottom:10px}
+  .picked .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+  .picked .chip{font-size:14px;font-weight:700;background:var(--arm);color:#fff;border-radius:999px;padding:6px 11px}
+  .addcar{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;border:none;border-radius:12px;
+    padding:15px;cursor:pointer;background:var(--good);color:#fff;box-shadow:0 3px 0 var(--good-deep)}
   .qhead{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px}
   .qhead .row-meta{font-family:'Bricolage Grotesque';font-weight:700;font-size:13px;color:#fff;background:var(--ink);padding:3px 10px;border-radius:999px}
   .advance{width:100%;font-family:'Bricolage Grotesque';font-weight:800;font-size:16px;border:none;border-radius:13px;padding:14px;cursor:pointer;background:var(--deck-ink);color:#fff;box-shadow:0 3px 0 #1b2c4d;margin:2px 0 12px}
@@ -76,7 +90,7 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v11.1</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v12</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
@@ -91,8 +105,15 @@
   </div>
   <button class="scanbtn" id="scanBtn" onclick="toggleScan()">Start camera scan</button>
   <div id="reader"></div>
-  <div class="label">No tag? Type the student's name</div>
-  <div class="manual"><input id="nameInput" type="text" placeholder="e.g. Sam Carter" autocomplete="off" onkeydown="if(event.key==='Enter')addManual()"><button onclick="addManual()">Add</button></div>
+  <div class="label">No tag / wrong name? Search the student list</div>
+  <div class="manual"><input id="nameInput" type="text" placeholder="Type 3+ letters of a name" autocomplete="off" oninput="searchRoster()" onkeydown="if(event.key==='Enter')addTyped()"><button onclick="addTyped()">Add typed</button></div>
+  <div class="rstat" id="rstat">Loading student list\u2026</div>
+  <div class="sres" id="sres"></div>
+  <div class="picked" id="picked" style="display:none">
+    <div class="label" style="margin:0 0 7px">Students in this car</div>
+    <div class="chips" id="chips"></div>
+    <button class="addcar" onclick="addPickedCar()">&#10003; Add this car to Row <span id="pickRow">A</span></button>
+  </div>
   <div class="label">Or enter a tag number</div>
   <div class="manual"><input id="idInput" type="text" inputmode="numeric" placeholder="e.g. 1042" autocomplete="off" onkeydown="if(event.key==='Enter')addById()"><button onclick="addById()">Add</button></div>
   <div class="qhead"><div class="label" style="margin:0">In this row now</div><div class="row-meta" id="rowMeta">Wave 1</div></div>
@@ -110,7 +131,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v11.1 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v12 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -152,13 +173,73 @@
     const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),15000);  // v11.1: outlast the server's 10s lock wait so a 'failed' action can never secretly succeed
     try{ const r=await fetch(u.toString(),{signal:ctl.signal}); return await r.json(); } finally{ clearTimeout(to); } }
 
-  function setRow(r){ row=r; document.getElementById('rowA').className=r==='A'?'on':''; document.getElementById('rowB').className=r==='B'?'on':''; disarm(); showReady(); refresh(); }
+  function setRow(r){ row=r; try{renderPicked();}catch(e){} document.getElementById('rowA').className=r==='A'?'on':''; document.getElementById('rowB').className=r==='B'?'on':''; disarm(); showReady(); refresh(); }
   function setConfirm(kind,icon,main,sub,showSame){ if(clearTimer){clearTimeout(clearTimer);clearTimer=null;} const c=document.getElementById('confirm'); c.className='confirm '+kind; c.style.animation='none';void c.offsetWidth;c.style.animation='cpulse .45s ease'; document.getElementById('cicon').innerHTML=icon; document.getElementById('cmain').textContent=main; document.getElementById('csub').textContent=sub||''; document.getElementById('csame').style.display=showSame?'block':'none'; }
   function showReady(){ setConfirm('ready','&#8250;','Ready to scan','Point the camera at a car\u2019s tag, or type below',false); }
   function autoReady(ms){ if(clearTimer)clearTimeout(clearTimer); clearTimer=setTimeout(()=>{ if(!armSameCar) showReady(); }, ms||3500); }
   function armSame(){ armSameCar=true; const q=board[row].queue,car=q[q.length-1]; setConfirm('armed','&#43;','Add the next tag to THIS car',(car?car.names.join(', '):'')+'  —  scan or type the second tag',false); }
   function disarm(){ armSameCar=false; }
 
+  // ---------- v12: roster held in memory only (fetched from Apps Script, never stored) ----------
+  let ROSTER=[], byFam={}, picked=[];
+  async function loadRoster(){
+    const st=document.getElementById('rstat');
+    try{
+      const res=await call({action:'roster'});
+      if(res && res.students && res.students.length){
+        ROSTER=res.students; byFam={};
+        for(const s of ROSTER){ if(s.f){ (byFam[s.f]=byFam[s.f]||[]).push(s); } }
+        st.textContent='\u2713 '+ROSTER.length+' students loaded \u2014 search works offline now';
+        st.className='rstat ok';
+      } else { st.textContent='Student list unavailable \u2014 you can still scan or type a name'; st.className='rstat bad'; }
+    }catch(e){ st.textContent='Student list didn\u2019t load \u2014 you can still scan or type a name'; st.className='rstat bad'; }
+  }
+  function label(s){ return s.n + (s.g!=='' ? ' ('+s.g+')' : ''); }
+  function searchRoster(){
+    const q=document.getElementById('nameInput').value.trim().toLowerCase();
+    const box=document.getElementById('sres');
+    if(q.length<3){ box.innerHTML=''; return; }
+    if(!ROSTER.length){ box.innerHTML='<div class="none">Student list not loaded \u2014 use \u201cAdd typed\u201d.</div>'; return; }
+    const hits=ROSTER.filter(s=>s.n.toLowerCase().indexOf(q)!==-1).slice(0,25);
+    if(!hits.length){ box.innerHTML='<div class="none">No match \u2014 check spelling, or use \u201cAdd typed\u201d.</div>'; return; }
+    box.innerHTML='';
+    hits.forEach(s=>{
+      const b=document.createElement('button');
+      const on=picked.some(p=>p.n===s.n && p.g===s.g);
+      b.className=on?'sel':'';
+      b.innerHTML='<span>'+(on?'\u2713 ':'')+esc(s.n)+'</span><span class="gr">'+esc(s.g||'\u2014')+'</span>';
+      b.onclick=function(){ togglePick(s); };
+      box.appendChild(b);
+    });
+  }
+  function togglePick(s){
+    unlockAudio();
+    const i=picked.findIndex(p=>p.n===s.n && p.g===s.g);
+    if(i===-1) picked.push(s); else picked.splice(i,1);
+    renderPicked(); searchRoster();
+  }
+  function renderPicked(){
+    const wrap=document.getElementById('picked'), chips=document.getElementById('chips');
+    document.getElementById('pickRow').textContent=row;
+    if(!picked.length){ wrap.style.display='none'; chips.innerHTML=''; return; }
+    wrap.style.display='block'; chips.innerHTML='';
+    picked.forEach((s,i)=>{ const c=document.createElement('span'); c.className='chip';
+      c.textContent=label(s)+'  \u2715'; c.onclick=function(){ picked.splice(i,1); renderPicked(); searchRoster(); };
+      chips.appendChild(c); });
+  }
+  function addPickedCar(){
+    if(!picked.length) return;
+    const joined=picked.map(label).join('|');
+    picked=[]; renderPicked();
+    document.getElementById('nameInput').value=''; document.getElementById('sres').innerHTML='';
+    place('manual','name',joined,joined,false);
+  }
+  function addTyped(){
+    unlockAudio();
+    const el=document.getElementById('nameInput'); const v=el.value.trim(); if(!v) return;
+    place('manual','name',v,v,false);
+    el.value=''; document.getElementById('sres').innerHTML='';
+  }
   let verifying=false, verifyOn=true, verifyCar=null;
   function setVerifyMode(on){ verifyOn=on; try{localStorage.setItem('verifyMode',on?'1':'0');}catch(e){} if(!on){closeVerify();} }
   (function(){ try{ const s=localStorage.getItem('verifyMode'); if(s!==null){ verifyOn=(s==='1'); } }catch(e){}
@@ -178,7 +259,7 @@
     const attach=armSameCar; armSameCar=false;
     const params={action,row}; params[field]=value; if(attach) params.same=1;
     let res;
-    try{ res=await call(params); }catch(e){ dbg('NETWORK ERROR on '+code); feedback(false); setConfirm('err','&#33;','No connection','Try again',false); return; }
+    try{ res=await call(params); }catch(e){ delete recentAdd[code]; dbg('NETWORK ERROR on '+code); feedback(false); setConfirm('err','&#33;','No connection','Try again',false); return; }
     if(res && res.ok){
       board=res.board; render();
       const q=board[row].queue,car=q[q.length-1]; const names=car?car.names.join(', '):'car';
@@ -187,8 +268,8 @@
       if(verifyOn && car){ openVerify(car,attach); }
       else if(attach) { setConfirm('ok','&#10003;','Added to same car','This car now: '+names+' ('+(car?car.names.length:'?')+')',true); autoReady(); }
       else { setConfirm('ok','&#10003;',names,'Scanned into Row '+row+' \u2022 tap \u201cSame car\u201d only if this car has another tag',true); autoReady(); }
-    } else if(res && res.error==='unknown tag'){ dbg('UNKNOWN tag '+code); feedback(false); setConfirm('err','&#33;','Tag '+code+' not in roster','Type the student\u2019s name below',false); }
-    else { dbg('add failed'); feedback(false); setConfirm('err','&#33;','Couldn\u2019t add','Check connection',false); }
+    } else if(res && res.error==='unknown tag'){ delete recentAdd[code]; dbg('UNKNOWN tag '+code); feedback(false); setConfirm('err','&#33;','Tag '+code+' not in roster','Type the student\u2019s name below',false); }
+    else { delete recentAdd[code]; dbg('add failed'); feedback(false); setConfirm('err','&#33;','Couldn\u2019t add','Check connection',false); }
   }
   function addById(){ unlockAudio(); const el=document.getElementById('idInput');const v=el.value.trim();if(!v)return; place('scan','familyId',v,v,false); el.value=''; }
   function addManual(){ unlockAudio(); const el=document.getElementById('nameInput');const v=el.value.trim();if(!v)return; place('manual','name',v,v,false); el.value=''; }
@@ -244,14 +325,16 @@
     const text=String(raw).trim();
     if(text===heldCode) return;
     const now=Date.now();
-    if(recentAdd[text] && now-recentAdd[text]<4000){ heldCode=text; return; }
+    if(recentAdd[text] && now-recentAdd[text]<12000){ heldCode=text; return; }  // v11.2: was 4s — real duplicates came in at 3-4.5s
     heldCode=text; recentAdd[text]=now;
     dbg('camera read: '+text);
+    const local=byFam[text];
+    if(local && local.length) setConfirm('ready','\u22EF',local.map(label).join(', '),'Sending to the board\u2026',false);
     feedback(true);                               // INSTANT check + beep the moment the code is read
     place('scan','familyId',text,text,true);      // skip the success beep (already gave it)
   }
   function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-  setRow('A'); showReady();
+  setRow('A'); showReady(); loadRoster();
   setInterval(refresh,5000);
 </script>
 <div class="vwrap" id="vwrap">
