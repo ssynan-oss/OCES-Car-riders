@@ -42,16 +42,25 @@
   .whead .wtag{margin-left:auto;font-size:14px;font-weight:800;background:rgba(255,255,255,.22);
                border-radius:999px;padding:5px 13px}
 
-  .cars{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:9px;padding:12px}
+  .lanes{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .lane{padding:0 0 10px}
+  .lane + .lane{border-left:3px dashed var(--line)}
+  .lanehead{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;color:var(--wc);
+            padding:9px 14px 6px;display:flex;align-items:baseline;gap:10px}
+  .lanehead .lct{font-family:Inter,sans-serif;font-size:13px;font-weight:800;color:var(--soft)}
+  .lane-empty{font-size:15px;color:var(--soft);font-style:italic;padding:4px 4px 8px}
+  .cars{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:9px;padding:0 12px}
+  @media (max-width:1100px){ .lanes{grid-template-columns:1fr} .lane + .lane{border-left:none;border-top:3px dashed var(--line)} }
   .car{display:flex;align-items:flex-start;gap:11px;border:2px solid var(--line);border-radius:11px;
        padding:10px 12px;background:#fff}
   .car.waiting{opacity:.55;border-style:dashed}
-  .rowbadge{flex:0 0 auto;font-family:'Bricolage Grotesque',sans-serif;font-size:19px;color:#fff;
-            background:var(--wc);border-radius:8px;width:34px;height:34px;display:flex;
-            align-items:center;justify-content:center}
+  .conebadge{flex:0 0 auto;background:var(--wc);color:#fff;border-radius:9px;width:52px;
+             padding:6px 0 7px;display:flex;flex-direction:column;align-items:center;line-height:1}
+  .conebadge .cn{font-family:'Bricolage Grotesque',sans-serif;font-size:30px;margin:1px 0}
+  .conebadge .cl{font-size:10px;font-weight:800;opacity:.8;letter-spacing:1px;text-transform:uppercase}
   .nms{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .nms .n{font-size:25px;font-weight:800;line-height:1.15;letter-spacing:-.3px;
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nms .n{font-size:24px;font-weight:800;line-height:1.15;letter-spacing:-.3px;
+          overflow-wrap:anywhere}
   .nms .n.small{font-size:21px}
 
   .empty{padding:60px 20px;text-align:center;color:var(--soft)}
@@ -156,10 +165,12 @@
         const w = base + Math.floor(idx/SIZE);
         live[car.id]=true;
         const prev = ledger[car.id];
+        const frozen = prev && prev.state==='done';
         ledger[car.id] = {
           names: car.names||[],
           row: rw,
-          wave: (prev && prev.state==='done') ? prev.wave : w,
+          wave: frozen ? prev.wave : w,
+          cone: frozen ? prev.cone : (idx % SIZE) + 1,
           state: idx < SIZE ? 'up' : 'waiting',
           seq: prev ? prev.seq : Date.now()+idx/1000
         };
@@ -206,26 +217,36 @@
 
     const host=document.getElementById('waves'); host.innerHTML='';
     waves.forEach(w=>{
-      const cars=byWave[w].sort((a,b)=> a.row===b.row ? a.seq-b.seq : (a.row<b.row?-1:1));
       const sec=document.createElement('section');
       sec.className='wave'; sec.id='wave-'+w;
       sec.style.setProperty('--wc', waveColor(w));
-      const allWaiting = cars.every(c=>c.state==='waiting');
-      const tag = w===curWave ? 'LOADING NOW' : (allWaiting ? 'staged' : 'loaded');
+      const cars=byWave[w];
+      const tag = w===curWave ? 'LOADING NOW' : (cars.every(c=>c.state==='waiting') ? 'staged' : 'loaded');
       sec.innerHTML =
         '<div class="whead"><span class="wnum">Wave '+w+'</span>'+
         '<span class="wsub">'+cars.length+' car'+(cars.length===1?'':'s')+'</span>'+
         '<span class="wtag">'+tag+'</span></div>';
-      const grid=document.createElement('div'); grid.className='cars';
-      cars.forEach(c=>{
-        const d=document.createElement('div');
-        d.className='car'+(c.state==='waiting'?' waiting':'');
-        const small = c.names.length>2 ? ' small' : '';
-        d.innerHTML='<div class="rowbadge">'+c.row+'</div><div class="nms">'+
-          c.names.map(n=>'<div class="n'+small+'">'+esc(n)+'</div>').join('')+'</div>';
-        grid.appendChild(d);
+
+      const lanes=document.createElement('div'); lanes.className='lanes';
+      ['A','B'].forEach(rw=>{
+        const mine=cars.filter(c=>c.row===rw).sort((a,b)=>(a.cone||99)-(b.cone||99));
+        const lane=document.createElement('div'); lane.className='lane';
+        lane.innerHTML='<div class="lanehead">Row '+rw+'<span class="lct">'+
+                       mine.length+' car'+(mine.length===1?'':'s')+'</span></div>';
+        const grid=document.createElement('div'); grid.className='cars';
+        if(!mine.length){ grid.innerHTML='<div class="lane-empty">no cars in Row '+rw+'</div>'; }
+        mine.forEach(c=>{
+          const d=document.createElement('div');
+          d.className='car'+(c.state==='waiting'?' waiting':'');
+          const small = c.names.length>2 ? ' small' : '';
+          d.innerHTML='<div class="conebadge"><span class="cn">'+(c.cone||'\u2013')+'</span>'+
+            '<span class="cl">cone</span></div><div class="nms">'+
+            c.names.map(n=>'<div class="n'+small+'">'+esc(n)+'</div>').join('')+'</div>';
+          grid.appendChild(d);
+        });
+        lane.appendChild(grid); lanes.appendChild(lane);
       });
-      sec.appendChild(grid);
+      sec.appendChild(lanes);
       host.appendChild(sec);
     });
 
