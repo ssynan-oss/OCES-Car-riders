@@ -61,6 +61,9 @@
   .qitem.failedrow{border-color:var(--bad);background:#fff7f7}
   .rt{font-family:inherit;font-weight:800;font-size:13px;border:2px solid var(--bad);color:var(--bad-deep);
       background:#fff;border-radius:8px;padding:4px 9px;margin-right:6px;cursor:pointer}
+.undo{width:100%;font-family:inherit;font-weight:800;font-size:14px;border:2px solid var(--line);
+        background:var(--card);color:var(--ink-soft);border-radius:10px;padding:9px;margin-top:7px;cursor:pointer}
+  .undo:active{background:#f0eee9}
   .pend{float:right;font-size:12px;font-weight:800;border-radius:999px;padding:4px 10px}
   .pend.ok{background:#e9f7ee;color:var(--good-deep)} .pend.busy{background:#fff4e0;color:#a35b00}
   .rstat{font-size:12px;font-weight:700;margin:-2px 0 8px;color:var(--ink-soft)}
@@ -98,7 +101,7 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v14</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v15</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
@@ -127,6 +130,7 @@
   <div class="manual"><input id="idInput" type="text" inputmode="numeric" placeholder="e.g. 1042" autocomplete="off" onkeydown="if(event.key==='Enter')addById()"><button onclick="addById()">Add</button></div>
   <div class="qhead"><div class="label" style="margin:0">In this row now</div><div class="row-meta" id="rowMeta">Wave 1</div></div>
   <button class="advance" id="advBtn" onclick="advance()">Wave loaded &amp; gone — Advance Rows A + B ▶</button>
+  <button class="undo" id="undoBtn" onclick="undoAdvance()">&#8630; Undo last advance</button>
   <div class="qlist" id="qlist"></div>
   <div class="endday"><button class="closeday" onclick="closeDay()">Car Riders Closed — end the day</button><div class="endhint">Clears both rows and resets to Wave 1 for tomorrow. Asks first.</div></div>
   <div id="dbg">v10 · ready — tap Start camera scan</div>
@@ -140,7 +144,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v14 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v15 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -408,6 +412,24 @@
     }finally{
       advancing=false; const b=document.getElementById('advBtn'); b.innerHTML='Wave loaded &amp; gone — Advance Rows A + B \u25B6'; b.disabled=totalQ()===0;
     }
+  }
+  async function undoAdvance(){
+    unlockAudio();
+    const unsent=pending.filter(j=>!j.cancelled).length;
+    if(unsent>0){ alert(unsent+' car(s) are still saving. Wait for \u201call saved\u201d, then undo.'); return; }
+    if(!confirm('Step back one wave?\n\nThe cars that were just loaded go back into the line, and the wave number goes down by one.\n\nUse this if Advance was tapped too soon, or twice.')) return;
+    const b=document.getElementById('undoBtn'); b.disabled=true; b.textContent='Stepping back\u2026';
+    setConfirm('armed','&#8630;','Stepping back one wave\u2026','',false);
+    try{
+      const res=await call({action:'undoAdvance'});
+      if(res&&res.ok){
+        board=res.board; render(); feedback(true);
+        const n=res.restored||0;
+        setConfirm('ok','&#10003;','Back to Wave '+board[row].wave, n+' car'+(n===1?'':'s')+' put back in line',false);
+        autoReady(4000); dbg('undo advance \u2014 restored '+n);
+      } else { feedback(false); setConfirm('err','&#33;','Undo didn\u2019t take','Try again',false); }
+    }catch(e){ feedback(false); setConfirm('err','&#33;','No response','Check the connection, then try again',false); }
+    finally{ b.disabled=false; b.innerHTML='&#8630; Undo last advance'; }
   }
   async function removeCar(id){ let res;try{res=await call({action:'remove',id});}catch(e){return;} if(res&&res.ok){board=res.board;render();} }
   async function closeDay(){ unlockAudio(); if(!confirm('End car rider for today?\n\nThis clears both rows and resets to Wave 1 for tomorrow.'))return; disarm(); let res;try{res=await call({action:'close'});}catch(e){feedback(false);setConfirm('err','&#33;','No connection','Try again',false);return;} if(res&&res.ok){board=res.board;render();feedback(true);setConfirm('ok','&#10003;','Car riders closed','Board cleared for tomorrow',false);autoReady(4000);} }
