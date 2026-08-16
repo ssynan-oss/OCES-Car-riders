@@ -48,7 +48,9 @@
   .lanehead{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;color:var(--wc);
             padding:9px 14px 6px;display:flex;align-items:baseline;gap:10px}
   .lanehead .lct{font-family:Inter,sans-serif;font-size:13px;font-weight:800;color:var(--soft)}
-  .lane-empty{font-size:15px;color:var(--soft);font-style:italic;padding:4px 4px 8px}
+  .car.vacant{background:#FAFAF8;border-style:dashed;opacity:.45}
+  .car.vacant .conebadge{background:var(--silver)}
+  .nms .n.vac{color:var(--silver);font-weight:800}
   .cars{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:9px;padding:0 12px}
   @media (max-width:1100px){ .lanes{grid-template-columns:1fr} .lane + .lane{border-left:none;border-top:3px dashed var(--line)} }
   .car{display:flex;align-items:flex-start;gap:11px;border:2px solid var(--line);border-radius:11px;
@@ -86,13 +88,14 @@
   <span class="btn pri" id="curWave">Wave 1</span>
   <button class="btn" onclick="jumpCurrent()">Jump to current wave</button>
   <button class="btn" onclick="toggleWaiting()" id="waitBtn">Hide not-yet-called</button>
+  <button class="btn" onclick="resetBoard()">Clear board history</button>
   <span class="count" id="count"></span>
 </div>
 
 <div id="scroll">
   <div class="empty" id="empty">
-    <h2>Car Rider Board</h2>
-    <p>Ready — waiting for the first car.</p>
+    <h2 id="emptyTitle">Car Rider Board</h2>
+    <p id="emptySub">Ready — waiting for the first car.</p>
   </div>
   <div id="waves"></div>
 </div>
@@ -110,9 +113,10 @@
   const PALETTE = ['#3347B4','#1F8A4C','#C2600A','#7B3FA0','#0E8E99','#F12025','#B03060','#3F5566'];
   const waveColor = w => PALETTE[(w-1) % PALETTE.length];
 
-  const LSKEY = 'oces-board-ledger';
+  const LSKEY = 'oces-board-ledger-v15';   // bumped: old saved boards are ignored
+  const CLOSEFLAG = 'oces-board-closed-handled';
   let ledger = {};        // id -> {names,row,wave,state}
-  let curWave = 1;
+  let curWave = 1, dayClosed = false;
   let lastOk = 0, showWaiting = true;
 
   // ---------- persistence so a refresh doesn't wipe the board ----------
@@ -153,10 +157,27 @@
 
   // ---------- fold the live queue into the running ledger ----------
   function absorb(data){
-    if(data.closed && Object.keys(ledger).length &&
-       (data.A.queue||[]).length===0 && (data.B.queue||[]).length===0 && data.A.wave===1){
-      ledger={}; curWave=1; saveLedger(); return;      // day was closed — start clean
+    // ---- REMOTE WIPE ----------------------------------------------------
+    // When the day is closed from the scanner, EVERY board that sees it wipes
+    // its own history and reloads a fresh copy of this page. That reaches
+    // phones and screens nobody remembers opening. One reload per close.
+    if(data.closed){
+      let already=false;
+      try{ already = localStorage.getItem(CLOSEFLAG)==='1'; }catch(e){}
+      ledger={}; curWave=1;
+      try{ localStorage.removeItem(LSKEY); }catch(e){}
+      if(!already){
+        try{ localStorage.setItem(CLOSEFLAG,'1'); }catch(e){}
+        const u=new URL(location.href);
+        u.searchParams.set('r', Date.now());     // busts any cached copy
+        location.replace(u.toString());
+        return;
+      }
+      render(); return;
     }
+    try{ localStorage.removeItem(CLOSEFLAG); }catch(e){}   // day is open again
+
+    dayClosed=false;
     curWave = Math.max(data.A.wave||1, data.B.wave||1);
     const live = {};
     ['A','B'].forEach(rw=>{
@@ -186,6 +207,11 @@
     saveLedger();
   }
 
+  function resetBoard(){
+    if(!confirm('Clear the names showing on this board?\n\nThis only clears THIS screen\u2019s history \u2014 it does not change the queue or the Sheet. The board will refill from what is still in line.')) return;
+    ledger={}; try{ localStorage.removeItem(LSKEY); }catch(e){}
+    render(); poll();
+  }
   function jumpCurrent(){
     const el=document.getElementById('wave-'+curWave);
     if(el) el.scrollIntoView({block:'start'});
@@ -203,6 +229,9 @@
 
     if(!shown.length){
       document.getElementById('empty').style.display='block';
+      document.getElementById('emptyTitle').textContent = dayClosed ? 'Dismissal Complete' : 'Car Rider Board';
+      document.getElementById('emptySub').textContent = dayClosed
+        ? 'Board cleared \u2014 see you tomorrow.' : 'Ready \u2014 waiting for the first car.';
       document.getElementById('waves').innerHTML='';
       document.getElementById('count').textContent='';
       document.getElementById('jumpBtn').style.display='none';
@@ -229,21 +258,29 @@
 
       const lanes=document.createElement('div'); lanes.className='lanes';
       ['A','B'].forEach(rw=>{
-        const mine=cars.filter(c=>c.row===rw).sort((a,b)=>(a.cone||99)-(b.cone||99));
+        const mine=cars.filter(c=>c.row===rw).sort((a,b)=>(a.seq||0)-(b.seq||0));
+        const slots=new Array(SIZE).fill(null);
+        const orphans=[];
+        mine.forEach(c=>{
+          const k=(c.cone|0)-1;
+          if(k>=0 && k<SIZE && !slots[k]) slots[k]=c; else orphans.push(c);
+        });
+        orphans.forEach(c=>{ const k=slots.indexOf(null); if(k!==-1) slots[k]=c; });
         const lane=document.createElement('div'); lane.className='lane';
         lane.innerHTML='<div class="lanehead">Row '+rw+'<span class="lct">'+
-                       mine.length+' car'+(mine.length===1?'':'s')+'</span></div>';
+                       mine.length+' of '+SIZE+' cones</span></div>';
         const grid=document.createElement('div'); grid.className='cars';
-        if(!mine.length){ grid.innerHTML='<div class="lane-empty">no cars in Row '+rw+'</div>'; }
-        mine.forEach(c=>{
+        for(let k=0;k<SIZE;k++){
+          const c=slots[k];
           const d=document.createElement('div');
-          d.className='car'+(c.state==='waiting'?' waiting':'');
-          const small = c.names.length>2 ? ' small' : '';
-          d.innerHTML='<div class="conebadge"><span class="cn">'+(c.cone||'\u2013')+'</span>'+
+          d.className='car'+(c?(c.state==='waiting'?' waiting':''):' vacant');
+          const small = c && c.names.length>2 ? ' small' : '';
+          d.innerHTML='<div class="conebadge"><span class="cn">'+(k+1)+'</span>'+
             '<span class="cl">cone</span></div><div class="nms">'+
-            c.names.map(n=>'<div class="n'+small+'">'+esc(n)+'</div>').join('')+'</div>';
+            (c ? c.names.map(n=>'<div class="n'+small+'">'+esc(n)+'</div>').join('')
+               : '<div class="n vac">\u2014</div>')+'</div>';
           grid.appendChild(d);
-        });
+        }
         lane.appendChild(grid); lanes.appendChild(lane);
       });
       sec.appendChild(lanes);
