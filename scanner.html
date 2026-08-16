@@ -55,6 +55,12 @@
   .manual input:focus{outline:none;border-color:var(--cone)}
   .manual button{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:0 16px;cursor:pointer;background:#efe7d6;color:var(--ink)}
   /* v12 roster search */
+.sv{flex:0 0 auto;font-size:13px;font-weight:800;border-radius:999px;padding:3px 8px;margin-right:6px}
+  .sv.ok{background:#e9f7ee;color:var(--good-deep)} .sv.wait{background:#fff4e0;color:#a35b00}
+  .sv.bad{background:#fdeaea;color:var(--bad-deep)}
+  .qitem.failedrow{border-color:var(--bad);background:#fff7f7}
+  .rt{font-family:inherit;font-weight:800;font-size:13px;border:2px solid var(--bad);color:var(--bad-deep);
+      background:#fff;border-radius:8px;padding:4px 9px;margin-right:6px;cursor:pointer}
   .pend{float:right;font-size:12px;font-weight:800;border-radius:999px;padding:4px 10px}
   .pend.ok{background:#e9f7ee;color:var(--good-deep)} .pend.busy{background:#fff4e0;color:#a35b00}
   .rstat{font-size:12px;font-weight:700;margin:-2px 0 8px;color:var(--ink-soft)}
@@ -92,7 +98,7 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v13</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v14</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
@@ -134,7 +140,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v13 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v14 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -269,6 +275,17 @@
     setConfirm('err','&#10007;','Removed: '+c.names.join(', '),'Re-scan the correct tag or type the name below',false); autoReady(5000); }
   // ================= v13: BACKGROUND SEND QUEUE =================
   let pending=[], pumping=false, uidSeq=0;
+  const PKEY='oces-pending-'+new Date().toDateString();
+  function savePending(){ try{ localStorage.setItem(PKEY, JSON.stringify(pending.map(j=>({params:j.params,label:j.label})))); }catch(e){} }
+  function restorePending(){
+    try{
+      const raw=localStorage.getItem(PKEY); if(!raw) return;
+      const arr=JSON.parse(raw)||[];
+      if(arr.length && confirm(arr.length+' scan(s) from earlier were never saved.\n\nSend them now?')){
+        arr.forEach(j=>pending.push(j)); updatePending(); pump();
+      } else { localStorage.removeItem(PKEY); }
+    }catch(e){}
+  }
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
   function updatePending(){
@@ -276,6 +293,19 @@
     const n=pending.filter(j=>!j.cancelled).length;
     if(n===0){ el.className='pend ok'; el.textContent='\u2713 all saved'; }
     else { el.className='pend busy'; el.textContent='\u21BB sending '+n+'\u2026'; }
+  }
+
+  async function alreadyLanded(job){
+    if(!job.label) return false;
+    try{
+      const d=await call({action:'board'});
+      if(!d || !d[job.params.row]) return false;
+      const q=d[job.params.row].queue||[];
+      const want=job.label;
+      const hit=q.find(c=>(c.names||[]).join(', ')===want);
+      if(hit){ board=d; if(job.car){ job.car.id=hit.id; job.car.local=false; job.car.saved=true; } job.serverId=hit.id; render(); return true; }
+    }catch(e){}
+    return false;
   }
 
   async function pump(){
@@ -290,13 +320,18 @@
           board=res.board;
           const q=(board[job.params.row]||{}).queue||[];
           job.serverId = q.length ? q[q.length-1].id : null;
+          if(job.car){ job.car.saved=true; job.car.failed=false; }
           if(job.wantRemove && job.serverId) pending.push({params:{action:'remove',id:job.serverId}});
           render();
         }
-        pending.shift(); updatePending();
+        pending.shift(); updatePending(); savePending();
       } else {
         job.fails=(job.fails||0)+1;
-        if(job.fails>=4){ pending.shift(); updatePending(); dbg('GAVE UP: '+(job.label||job.params.action)); flagLost(job); }
+        // A timed-out write may have SUCCEEDED on Google's side. Check the real
+        // board before retrying, or we would create a duplicate car.
+        const landed = await alreadyLanded(job);
+        if(landed){ dbg('already saved (late) \u2014 '+(job.label||'')); pending.shift(); updatePending(); continue; }
+        if(job.fails>=4){ job.failed=true; pending.shift(); updatePending(); dbg('GAVE UP: '+(job.label||job.params.action)); flagLost(job); render(); }
         else { dbg('retry '+job.fails+' \u2014 '+(job.label||job.params.action)); await sleep(900*job.fails); }
       }
     }
@@ -305,10 +340,16 @@
   }
 
   function flagLost(job){
+    if(job.car){ job.car.failed=true; job.car.saved=false; }
     setConfirm('err','&#33;','Couldn\u2019t save: '+(job.label||'a car'),'Please re-scan or re-add this car',false);
     feedback(false);
   }
-  function enqueue(job){ pending.push(job); updatePending(); pump(); }
+  function retryCar(id){
+    const q=board[row].queue||[]; const c=q.find(x=>x.id===id); if(!c||!c.job) return;
+    c.failed=false; c.job.fails=0; c.job.failed=false; render();
+    enqueue(c.job);
+  }
+  function enqueue(job){ pending.push(job); updatePending(); savePending(); pump(); }
 
   function localAdd(names, attach){
     const q=board[row].queue||(board[row].queue=[]);
@@ -353,6 +394,8 @@
   async function advance(){
     if(advancing) return;
     if(totalQ()===0) return;
+    const unsent=pending.filter(j=>!j.cancelled).length;
+    if(unsent>0 && !confirm(unsent+' car'+(unsent===1?' is':'s are')+' still saving.\n\nAdvancing now could put them in the wrong wave.\nWait a few seconds and try again \u2014 or press OK to advance anyway.')) return;
     advancing=true; unlockAudio(); disarm();
     const btn=document.getElementById('advBtn'); btn.disabled=true; btn.innerHTML='Advancing Rows A + B\u2026';
     setConfirm('armed','&#8635;','Advancing Rows A + B\u2026','Loading the next wave in both rows',false);
@@ -381,7 +424,13 @@
       if(i===SIZE){const dv=document.createElement('div');dv.className='divider';dv.textContent='— on deck / further back —';list.appendChild(dv);}
       const it=document.createElement('div');it.className='qitem'+(i>=SIZE?' deck':'');
       const multi=c.names.length>1?'<span class="cnt">'+c.names.length+' in car</span>':'';
-      it.innerHTML='<div class="pos">'+(i<SIZE?(i+1):'•')+'</div><div class="nm">'+esc(c.names.join(', '))+multi+'</div><button class="x" onclick="removeCar(\''+c.id+'\')">×</button>';
+      let flag='<span class="sv ok" title="saved">&#10003;</span>';
+      if(c.failed) flag='<span class="sv bad" title="NOT saved">&#33; not saved</span>';
+      else if(c.local && !c.saved) flag='<span class="sv wait" title="sending">&#8635;</span>';
+      it.className+= c.failed?' failedrow':'';
+      it.innerHTML='<div class="pos">'+(i<SIZE?(i+1):'\u2022')+'</div><div class="nm">'+esc(c.names.join(', '))+multi+'</div>'+flag+
+        (c.failed?'<button class="rt" onclick="retryCar(\''+c.id+'\')">Retry</button>':'')+
+        '<button class="x" onclick="removeCar(\''+c.id+'\')">\u00d7</button>';
       list.appendChild(it);
     });
   }
@@ -419,7 +468,7 @@
     place('scan','familyId',text,text,true);      // skip the success beep (already gave it)
   }
   function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
-  setRow('A'); showReady(); loadRoster();
+  setRow('A'); showReady(); loadRoster(); restorePending();
   setInterval(refresh,5000);
 </script>
 <div class="vwrap" id="vwrap">
