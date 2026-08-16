@@ -48,6 +48,7 @@
   .lanehead{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;color:var(--wc);
             padding:9px 14px 6px;display:flex;align-items:baseline;gap:10px}
   .lanehead .lct{font-family:Inter,sans-serif;font-size:13px;font-weight:800;color:var(--soft)}
+  .lane-none{font-size:15px;color:var(--soft);font-style:italic;padding:2px 4px 10px}
   .car.vacant{background:#FAFAF8;border-style:dashed;opacity:.45}
   .car.vacant .conebadge{background:var(--silver)}
   .nms .n.vac{color:var(--silver);font-weight:800}
@@ -266,11 +267,21 @@
           if(k>=0 && k<SIZE && !slots[k]) slots[k]=c; else orphans.push(c);
         });
         orphans.forEach(c=>{ const k=slots.indexOf(null); if(k!==-1) slots[k]=c; });
+        const isCurrent = (w===curWave);
+        // Current wave: always show all 10 cones so the layout never moves.
+        // Past waves: trim the empty tail — history doesn't need blank boxes.
+        let showTo = SIZE;
+        if(!isCurrent){
+          let lastFilled=-1;
+          for(let k=0;k<SIZE;k++) if(slots[k]) lastFilled=k;
+          showTo = lastFilled+1;
+        }
         const lane=document.createElement('div'); lane.className='lane';
         lane.innerHTML='<div class="lanehead">Row '+rw+'<span class="lct">'+
                        mine.length+' of '+SIZE+' cones</span></div>';
         const grid=document.createElement('div'); grid.className='cars';
-        for(let k=0;k<SIZE;k++){
+        if(showTo===0){ grid.innerHTML='<div class="lane-none">no cars in this row</div>'; }
+        for(let k=0;k<showTo;k++){
           const c=slots[k];
           const d=document.createElement('div');
           d.className='car'+(c?(c.state==='waiting'?' waiting':''):' vacant');
