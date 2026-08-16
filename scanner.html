@@ -55,6 +55,8 @@
   .manual input:focus{outline:none;border-color:var(--cone)}
   .manual button{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px;border:none;border-radius:12px;padding:0 16px;cursor:pointer;background:#efe7d6;color:var(--ink)}
   /* v12 roster search */
+  .pend{float:right;font-size:12px;font-weight:800;border-radius:999px;padding:4px 10px}
+  .pend.ok{background:#e9f7ee;color:var(--good-deep)} .pend.busy{background:#fff4e0;color:#a35b00}
   .rstat{font-size:12px;font-weight:700;margin:-2px 0 8px;color:var(--ink-soft)}
   .rstat.ok{color:var(--good-deep)} .rstat.bad{color:var(--bad-deep)}
   .sres{display:flex;flex-direction:column;gap:5px;margin-bottom:8px;max-height:270px;overflow-y:auto}
@@ -90,13 +92,14 @@
 <body>
   <header>
     <div class="cone-mark"></div>
-    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v12</b></div></div>
+    <div><h1>Car Rider Scanner</h1><div class="sub">scan a car &middot; check + beep confirm each &middot; <b style="color:#c25908">v13</b></div></div>
   </header>
   <div class="label">Scanning into</div>
   <div class="rowpick">
     <button id="rowA" class="on" onclick="setRow('A')">Row A</button>
     <button id="rowB" onclick="setRow('B')">Row B</button>
   </div>
+  <span class="pend ok" id="pendChip">&#10003; all saved</span>
   <label class="vtoggle"><input type="checkbox" id="verifyChk" checked onchange="setVerifyMode(this.checked)"> Verify each scan (show name popup)</label>
   <div class="confirm ready" id="confirm">
     <div class="cicon" id="cicon">&#8250;</div>
@@ -106,7 +109,7 @@
   <button class="scanbtn" id="scanBtn" onclick="toggleScan()">Start camera scan</button>
   <div id="reader"></div>
   <div class="label">No tag / wrong name? Search the student list</div>
-  <div class="manual"><input id="nameInput" type="text" placeholder="Type 3+ letters of a name" autocomplete="off" oninput="searchRoster()" onkeydown="if(event.key==='Enter')addTyped()"><button onclick="addTyped()">Add typed</button></div>
+  <div class="manual"><input id="nameInput" type="text" placeholder="Type 2+ letters \u2014 first or last name" autocomplete="off" oninput="searchRoster()" onkeydown="if(event.key==='Enter')pickFirst()"><button onclick="addTyped()">Add typed</button></div>
   <div class="rstat" id="rstat">Loading student list\u2026</div>
   <div class="sres" id="sres"></div>
   <div class="picked" id="picked" style="display:none">
@@ -131,7 +134,7 @@
   let armSameCar=false, clearTimer=null, advancing=false;
   let actx=null, okAudio=null, errAudio=null, audioReady=false, checkEl=null;
 
-  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v12 · '+new Date().toLocaleTimeString()+' · '+m; }
+  function dbg(m){ const d=document.getElementById('dbg'); if(d) d.textContent='v13 · '+new Date().toLocaleTimeString()+' · '+m; }
 
   function initAudio(){ if(okAudio) return; okAudio=new Audio(OK_URI); errAudio=new Audio(ERR_URI); [okAudio,errAudio].forEach(a=>{a.preload='auto';a.setAttribute('playsinline','');document.body.appendChild(a);}); }
   function unlockAudio(){
@@ -198,9 +201,11 @@
   function searchRoster(){
     const q=document.getElementById('nameInput').value.trim().toLowerCase();
     const box=document.getElementById('sres');
-    if(q.length<3){ box.innerHTML=''; return; }
+    if(q.length<2){ box.innerHTML=''; return; }
     if(!ROSTER.length){ box.innerHTML='<div class="none">Student list not loaded \u2014 use \u201cAdd typed\u201d.</div>'; return; }
-    const hits=ROSTER.filter(s=>s.n.toLowerCase().indexOf(q)!==-1).slice(0,25);
+    const toks=q.split(/\s+/).filter(Boolean);
+    const all=ROSTER.filter(s=>{ const n=s.n.toLowerCase(); return toks.every(t=>n.indexOf(t)!==-1); });
+    const hits=all.slice(0,40);
     if(!hits.length){ box.innerHTML='<div class="none">No match \u2014 check spelling, or use \u201cAdd typed\u201d.</div>'; return; }
     box.innerHTML='';
     hits.forEach(s=>{
@@ -212,6 +217,7 @@
       box.appendChild(b);
     });
   }
+  function pickFirst(){ const b=document.querySelector('#sres button'); if(b) b.click(); }
   function togglePick(s){
     unlockAudio();
     const i=picked.findIndex(p=>p.n===s.n && p.g===s.g);
@@ -230,9 +236,11 @@
   function addPickedCar(){
     if(!picked.length) return;
     const joined=picked.map(label).join('|');
+    const pnames=picked.map(label);
     picked=[]; renderPicked();
     document.getElementById('nameInput').value=''; document.getElementById('sres').innerHTML='';
-    place('manual','name',joined,joined,false);
+    const at=armSameCar; armSameCar=false;
+    placeFast({action:'manual',name:joined}, pnames, joined, at);
   }
   function addTyped(){
     unlockAudio();
@@ -253,8 +261,76 @@
   function verifyOk(){ closeVerify(); setConfirm('ok','&#10003;','Confirmed','Ready for the next car',false); autoReady(1500); }
   function verifySame(){ const c=verifyCar; closeVerify(); armSame(); }
   async function verifyRemove(){ const c=verifyCar; closeVerify(); if(!c) return;
-    await removeCar(c.id); feedback(false);
+    const q=board[row].queue||[]; const i=q.indexOf(c); if(i!==-1) q.splice(i,1); render();
+    if(c.job && !c.job.serverId){ c.job.wantRemove=true; }
+    else if(c.job && c.job.serverId){ enqueue({params:{action:'remove',id:c.job.serverId}}); }
+    else { removeCar(c.id); }
+    feedback(false);
     setConfirm('err','&#10007;','Removed: '+c.names.join(', '),'Re-scan the correct tag or type the name below',false); autoReady(5000); }
+  // ================= v13: BACKGROUND SEND QUEUE =================
+  let pending=[], pumping=false, uidSeq=0;
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+  function updatePending(){
+    const el=document.getElementById('pendChip'); if(!el) return;
+    const n=pending.filter(j=>!j.cancelled).length;
+    if(n===0){ el.className='pend ok'; el.textContent='\u2713 all saved'; }
+    else { el.className='pend busy'; el.textContent='\u21BB sending '+n+'\u2026'; }
+  }
+
+  async function pump(){
+    if(pumping) return; pumping=true;
+    while(pending.length){
+      const job=pending[0];
+      if(job.cancelled){ pending.shift(); updatePending(); continue; }
+      let res=null, threw=false;
+      try{ res=await call(job.params); }catch(e){ threw=true; }
+      if(!threw && res && res.ok){
+        if(res.board){
+          board=res.board;
+          const q=(board[job.params.row]||{}).queue||[];
+          job.serverId = q.length ? q[q.length-1].id : null;
+          if(job.wantRemove && job.serverId) pending.push({params:{action:'remove',id:job.serverId}});
+          render();
+        }
+        pending.shift(); updatePending();
+      } else {
+        job.fails=(job.fails||0)+1;
+        if(job.fails>=4){ pending.shift(); updatePending(); dbg('GAVE UP: '+(job.label||job.params.action)); flagLost(job); }
+        else { dbg('retry '+job.fails+' \u2014 '+(job.label||job.params.action)); await sleep(900*job.fails); }
+      }
+    }
+    pumping=false;
+    try{ const d=await call({action:'board'}); if(d&&d.A&&pending.length===0){ board=d; render(); } }catch(e){}
+  }
+
+  function flagLost(job){
+    setConfirm('err','&#33;','Couldn\u2019t save: '+(job.label||'a car'),'Please re-scan or re-add this car',false);
+    feedback(false);
+  }
+  function enqueue(job){ pending.push(job); updatePending(); pump(); }
+
+  function localAdd(names, attach){
+    const q=board[row].queue||(board[row].queue=[]);
+    if(attach && q.length){ q[q.length-1].names=q[q.length-1].names.concat(names); return q[q.length-1]; }
+    const car={id:'local-'+(++uidSeq), names:names.slice(), local:true};
+    q.push(car); return car;
+  }
+
+  function placeFast(params, names, code, attach){
+    const car=localAdd(names, attach);
+    const job={params:Object.assign({row}, params), label:names.join(', '), car};
+    if(attach) job.params.same=1;
+    car.job=job;
+    enqueue(job);
+    render();
+    feedback(true);
+    const list=car.names.join(', ');
+    if(verifyOn){ openVerify(car, attach); }
+    else if(attach){ setConfirm('ok','&#10003;','Added to same car','This car now: '+list,true); autoReady(); }
+    else { setConfirm('ok','&#10003;',list,'Scanned into Row '+row+' \u2022 tap \u201cSame car\u201d only if this car has another tag',true); autoReady(); }
+  }
+
   async function place(action,field,value,code,skipOkBeep){
     const attach=armSameCar; armSameCar=false;
     const params={action,row}; params[field]=value; if(attach) params.same=1;
@@ -329,7 +405,16 @@
     heldCode=text; recentAdd[text]=now;
     dbg('camera read: '+text);
     const local=byFam[text];
-    if(local && local.length) setConfirm('ready','\u22EF',local.map(label).join(', '),'Sending to the board\u2026',false);
+    if(local && local.length){
+      const at=armSameCar; armSameCar=false;
+      placeFast({action:'scan',familyId:text}, local.map(label), text, at);
+      return;
+    }
+    if(ROSTER.length){
+      delete recentAdd[text]; feedback(false);
+      setConfirm('err','&#33;','Tag '+text+' not in the student list','Search the name below instead',false);
+      return;
+    }
     feedback(true);                               // INSTANT check + beep the moment the code is read
     place('scan','familyId',text,text,true);      // skip the success beep (already gave it)
   }
